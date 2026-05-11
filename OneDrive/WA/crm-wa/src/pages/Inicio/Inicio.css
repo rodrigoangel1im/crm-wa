@@ -1,0 +1,25 @@
+.page-header {
+  background: #3f3b6c;
+  padding: 30px;
+  color: white;
+}
+
+.page-header h1 {
+  margin-left: 10%;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.main-content {
+  display: flex;
+  justify-content: center;
+  padding: 40px;
+}
+
+.content-card {
+  background: #f7f7f7;
+  width: 85%;
+  min-height: 500px;
+  border-radius: 10px;
+  padding: 20px;
+}

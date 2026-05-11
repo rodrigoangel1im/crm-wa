@@ -1,0 +1,40 @@
+.avisos-section {
+  width: 100%;
+}
+
+.avisos-title-bar {
+  background: #3f3b6c;
+  color: white;
+  padding: 10px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 14px;
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+
+.avisos-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.avisos-table th {
+  background: #3f3b6c;
+  color: white;
+  padding: 10px;
+  border: 1px solid #2d2952;
+  text-align: left;
+  font-size: 13px;
+}
+
+.avisos-table td {
+  background: #dadada;
+  border: 1px solid #a3a3a3;
+  height: 200px;
+}
+
+.empty-row td {
+  color: #999;
+  font-style: italic;
+  height: 400px;
+}

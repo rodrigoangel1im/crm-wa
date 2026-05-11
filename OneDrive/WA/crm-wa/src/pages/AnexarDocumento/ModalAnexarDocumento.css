@@ -1,0 +1,164 @@
+/* Overlay para cobrir a tela de fundo */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* Container do Modal */
+.modalContent {
+  background-color: #d9d9d9;
+  width: 90%;
+  max-width: 850px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.modalHeader {
+  background-color: #3e437a;
+  padding: 15px 25px;
+}
+
+.modalHeader h3 {
+  color: white;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.modalBody {
+  padding: 20px;
+}
+
+/* Seção de Upload */
+.uploadSection {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.selectDoc {
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 13px;
+  width: 150px;
+}
+
+.fileName {
+  font-size: 13px;
+  color: #333;
+  flex-grow: 1;
+}
+
+.btnAdd {
+  background-color: #3e437a;
+  color: #f4ba41;
+  border: none;
+  padding: 8px 25px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btnAdd:hover {
+  opacity: 0.9;
+}
+
+.btnAdd:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnEscolher {
+  background-color: #3e437a;
+  color: #f4ba41;
+  border: none;
+  padding: 8px 25px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btnEscolher:hover {
+  opacity: 0.9;
+}
+
+/* Tabela e Seção de Listagem */
+.addedDocsHeader {
+  background-color: #3e437a;
+  color: white;
+  padding: 6px 15px;
+  font-size: 13px;
+  border-radius: 4px 4px 0 0;
+}
+
+.docsTable {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #3e437a;
+}
+
+.docsTable th {
+  color: white;
+  font-size: 11px;
+  font-weight: normal;
+  text-align: left;
+  padding: 8px 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.docsTable td {
+  color: white;
+  padding: 8px 15px;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Rodapé */
+.modalFooter {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  padding: 20px 0 40px 0;
+}
+
+.btnFooter {
+  background-color: #3e437a;
+  color: #f4ba41;
+  border: none;
+  padding: 10px 45px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btnFooter:hover {
+  opacity: 0.9;
+}
+
+.removeTableBtn {
+  background-color: #d32f2f;
+  color: white;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.removeTableBtn:hover {
+  background-color: #b71c1c;
+}

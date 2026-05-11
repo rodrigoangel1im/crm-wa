@@ -1,0 +1,137 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-container {
+  background-color: #e0e0e0;
+  width: 80%;
+  max-width: 800px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+  background-color: #3f3b6c;
+  color: white;
+  padding: 15px;
+  text-align: center;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.filter-section {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  margin-bottom: 20px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-group.grow {
+  flex-grow: 1;
+}
+
+.filter-group label {
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.filter-group select, .filter-group input {
+  padding: 8px;
+  background-color: #b5b2d9;
+  border: 1px solid #8e8bb3;
+  border-radius: 4px;
+}
+
+.btn-buscar {
+  background-color: #3f3b6c;
+  color: #f0c977;
+  border: none;
+  padding: 8px 25px;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-buscar:hover {
+  opacity: 0.9;
+}
+
+.table-container {
+  background-color: #f0f0f0;
+  border: 1px solid #999;
+  height: 250px;
+  overflow-y: auto;
+}
+
+.modal-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.modal-table th {
+  background-color: #3f3b6c;
+  color: white;
+  padding: 10px;
+  text-align: left;
+  position: sticky;
+  top: 0;
+}
+
+.modal-table td {
+  border: 1px solid #ccc;
+  padding: 10px;
+  height: 30px;
+}
+
+.modal-table-row {
+  cursor: pointer;
+}
+
+.modal-table-row:hover {
+  background-color: #d5d5d5;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.btn-voltar-modal {
+  background-color: #3f3b6c;
+  color: white;
+  padding: 8px 40px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.btn-voltar-modal:hover {
+  opacity: 0.9;
+}

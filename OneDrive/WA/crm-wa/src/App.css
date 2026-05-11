@@ -1,0 +1,15 @@
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+}
+html, body, #root { 
+    background-color: #9b98c6; 
+    font-family: Verdana, Arial, Helvetica, sans-serif; 
+    min-height: 100vh; 
+    margin: 0;
+    padding: 0 !important;
+    width: 100% !important;
+    height: 100%;
+    overflow-x: hidden;
+}
