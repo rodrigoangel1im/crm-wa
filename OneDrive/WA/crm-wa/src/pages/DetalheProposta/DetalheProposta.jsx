@@ -112,6 +112,9 @@ export default function DetalheProposta({ setPaginaAtual }) {
   const [margemLiberadaRealPosPort, setMargemLiberadaRealPosPort] = useState('')
   const [parcelasPrePort, setParcelasPrePort] = useState([{ id: 1, codBanco: '', nomeBanco: '', numeroContrato: '', prazoRest: '', valorParcela: '', saldoDevedor: '' }])
 
+  const [abaAtiva, setAbaAtiva] = useState('dados')
+  const [documentos, setDocumentos] = useState([])
+
   const adicionarParcelaRefin = () => {
     const newId = parcelasRefin.length > 0 ? Math.max(...parcelasRefin.map(p => p.id)) + 1 : 1
     setParcelasRefin([...parcelasRefin, { id: newId, valor: '' }])
@@ -320,6 +323,20 @@ export default function DetalheProposta({ setPaginaAtual }) {
     }
   }
 
+  async function carregarDocumentos(propostaId) {
+    try {
+      const { data, error } = await supabase
+        .from('documento_proposta')
+        .select('*')
+        .eq('proposta_id', propostaId)
+        .order('criado_em', { ascending: false })
+      if (error) throw error
+      setDocumentos(data || [])
+    } catch (error) {
+      console.error('Erro ao carregar documentos:', error)
+    }
+  }
+
   const salvarValoresReais = async () => {
     try {
       const propostaStr = localStorage.getItem('propostaSelecionada_crmwa')
@@ -330,8 +347,10 @@ export default function DetalheProposta({ setPaginaAtual }) {
         .from('proposta')
         .update({
           valor_liberado_real: valorRealLiberado ? parseFloat(valorRealLiberado.replace(/[^\d,]/g, '').replace(',', '.')) : null,
+          valor_liberado: valorRealLiberado ? parseFloat(valorRealLiberado.replace(/[^\d,]/g, '').replace(',', '.')) : undefined,
           numero_parcelas_real: numeroParcelasReal ? parseInt(numeroParcelasReal) : null,
-          parcela_real: parcelaReal ? parseFloat(parcelaReal.replace(/[^\d,]/g, '').replace(',', '.')) : null
+          parcela_real: parcelaReal ? parseFloat(parcelaReal.replace(/[^\d,]/g, '').replace(',', '.')) : null,
+          valor_parcela: parcelaReal ? parseFloat(parcelaReal.replace(/[^\d,]/g, '').replace(',', '.')) : undefined
         })
         .eq('id', proposta.id)
       if (error) throw error
@@ -464,7 +483,8 @@ export default function DetalheProposta({ setPaginaAtual }) {
           numero: p.prazo_restante ? p.prazo_restante + 'x' : '',
           bancoOrigem: p.banco_codigo || '',
           numeroContratoOrigem: p.numero_contrato || '',
-          saldoDevedor: p.saldo_devedor ? p.saldo_devedor.toFixed(2).replace('.', ',') : ''
+          saldoDevedor: p.saldo_devedor ? p.saldo_devedor.toFixed(2).replace('.', ',') : '',
+          troco: p.troco ? p.troco.toFixed(2).replace('.', ',') : ''
         }))
         setParcelas(arr)
         setParcelasRefin(arr.map(p => ({ id: p.id, valor: p.valor })))
@@ -555,498 +575,540 @@ export default function DetalheProposta({ setPaginaAtual }) {
         </header>
 
         <div className="form-content">
-          <section className="form-section">
-            <div className="section-title">Operação</div>
-            <div className="grid-row">
-              <div className="field-group">
-                <label>BANCO:</label>
-                <div className="input-with-button">
-                  <select value={banco} disabled>
-                    <option value="">Selecione o banco</option>
-                    {bancosDisponiveis.map((item) => (
-                      <option key={item.id} value={item.id}>{item.nome}</option>
-                    ))}
-                  </select>
-                  <button className="btn-modal" disabled>...</button>
-                </div>
-              </div>
-              <div className="field-group">
-                <label>TIPO DE OPERAÇÃO:</label>
-                <select value={tipoOperacao} disabled>
-                  <option value="">Selecione o tipo de operação</option>
-                  {operacoesPermitidas.map((item) => (
-                    <option key={item.id} value={item.id}>{item.nome}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="field-group">
-                <label>TIPO DE PRODUTO:</label>
-                <select value={tipoProduto} disabled>
-                  <option value="">Selecione o tipo do produto</option>
-                  {tiposProduto
-                    .filter(p => String(p.tipo_operacao_id) === String(tipoOperacao))
-                    .map((item) => (
-                      <option key={item.id} value={item.id}>{item.nome}</option>
-                    ))}
-                </select>
-              </div>
-            </div>
-            <div className="grid-row">
-              <div className="field-group">
-                <label>TIPO DE CONVÊNIO:</label>
-                <div className="input-with-button">
-                  <select value={tipoConvenio} disabled>
-                    <option value="">Selecione o convênio</option>
-                    {conveniosDisponiveis.map((item) => (
-                      <option key={item.id} value={item.id}>{item.nome}</option>
-                    ))}
-                  </select>
-                  <button className="btn-modal" disabled>...</button>
-                </div>
-              </div>
-              <div className="field-group">
-                <label>ORGÃO:</label>
-                <div className="input-with-button">
-                  <select value={orgao} disabled>
-                    <option value="">Selecione o orgão</option>
-                    {vinculosConvenio.map((item) => (
-                      <option key={item.id} value={item.id}>{item.nome}</option>
-                    ))}
-                  </select>
-                  <button className="btn-modal" disabled>...</button>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="form-section">
-            <div className="section-title">Cliente</div>
-            <div className="grid-row">
-              <div className="field-group" style={{position: 'relative', flex: 2}}>
-                <label>CPF:</label>
-                <div style={{display: 'flex', gap: '5px', width: '100%', alignItems: 'stretch'}}>
-                  <IMaskInput
-                    mask="000.000.000-00"
-                    value={cpf}
-                    placeholder="000.000.000-00"
-                    className={`imask-input ${cpfValido === false ? 'input-error' : ''}`}
-                    style={{flex: 1}}
-                    disabled
-                  />
-                  <button className="btn-puxar" style={{marginTop: 0, height: '30px', whiteSpace: 'nowrap'}} disabled>PUXAR CADASTRO</button>
-                </div>
-                {cpfValido === false && <span className="error-msg" style={{position: 'absolute', bottom: '-16px', left: '0'}}>CPF inválido</span>}
-              </div>
-              <div className="field-group" style={{position: 'relative'}}>
-                <label>MATRÍCULA:</label>
-                <input type="text" placeholder="Digite a matrícula" value={matricula} disabled />
-              </div>
-              {tipoConvenio === siapePensionistaId && (
-                <div className="field-group" style={{position: 'relative'}}>
-                  <label>MATRÍCULA INSTITUIDOR:</label>
-                  <input type="text" placeholder="Digite a matrícula do instituidor (7 dígitos)" value={matriculaInstituidor} disabled required />
-                </div>
-              )}
-              <div className="field-group">
-                <label>DATA DE NASCIMENTO:</label>
-                <input type="date" value={dataNascimento} disabled />
-              </div>
-            </div>
-            <div style={{display: 'flex', gap: '15px', width: '100%', alignItems: 'flex-end'}}>
-              <div className="field-group" style={{marginBottom: 0, flex: '0 0 20%'}}>
-                <label>MARGEM:</label>
-                <IMaskInput
-                  mask={Number}
-                  value={margemCliente}
-                  placeholder="R$ 0,00"
-                  className="imask-input"
-                  scale={2}
-                  radix=","
-                  prefix="R$ "
-                  thousandsSeparator="."
-                  style={{backgroundColor: '#d5d5d5'}}
-                  readOnly
-                />
-              </div>
-              <div className="field-group" style={{marginBottom: 0, flex: 1}}>
-                <label>RESTRIÇÃO:</label>
-                <div className="msg-bar" style={{backgroundColor: '#d5d5d5', opacity: 0.5, height: '30px', minHeight: '30px'}}></div>
-              </div>
-            </div>
-          </section>
-
-          <section className="form-section">
-            <div className="section-title">Dados Pessoais</div>
-            <div className="grid-row">
-              <div className="field-group full-width">
-                <label>NOME COMPLETO:</label>
-                <input type="text" placeholder="Digite o nome completo" value={nomeCompleto} disabled />
-              </div>
-            </div>
-            <div className="grid-row">
-              <div className="field-group">
-                <label>SEXO:</label>
-                <select value={sexo} disabled>
-                  <option value="">Selecione</option>
-                  <option value="masculino">Masculino</option>
-                  <option value="feminino">Feminino</option>
-                  <option value="outro">Outro</option>
-                </select>
-              </div>
-              <div className="field-group">
-                <label>NÚMERO DO DOCUMENTO:</label>
-                <input type="text" placeholder="Número do RG" value={numDocumento} disabled />
-              </div>
-              <div className="field-group">
-                <label>CLIENTE ALFABETIZADO:</label>
-                <select value={alfabetizado} disabled>
-                  <option value="">Selecione</option>
-                  <option value="sim">Sim</option>
-                  <option value="nao">Não</option>
-                </select>
-              </div>
-            </div>
-            <div className="grid-row">
-              <div className="field-group" style={{flex: 3}}>
-                <label>NOME DA MÃE:</label>
-                <input type="text" placeholder="Digite o nome da mãe" value={nomeMae} disabled />
-              </div>
-              <div className="field-group small">
-                <label>UF NAT:</label>
-                <select value={ufNaturalidade} disabled>
-                  <option value="">UF</option>
-                  <option>AC</option><option>AL</option><option>AP</option>
-                  <option>AM</option><option>BA</option><option>CE</option>
-                  <option>DF</option><option>ES</option><option>GO</option>
-                  <option>MA</option><option>MT</option><option>MS</option>
-                  <option>MG</option><option>PA</option><option>PB</option>
-                  <option>PR</option><option>PE</option><option>PI</option>
-                  <option>RJ</option><option>RN</option><option>RS</option>
-                  <option>RO</option><option>RR</option><option>SC</option>
-                  <option>SP</option><option>SE</option><option>TO</option>
-                </select>
-              </div>
-            </div>
-            <div className="grid-row">
-              <div className="field-group small">
-                <label>DDD:</label>
-                <IMaskInput mask="00" value={ddd} placeholder="00" className="imask-input" disabled />
-              </div>
-              <div className="field-group">
-                <label>TELEFONE:</label>
-                <IMaskInput mask="00000-0000" value={telefone} placeholder="00000-0000" className="imask-input" disabled />
-              </div>
-              <div className="field-group">
-                <label>EMAIL:</label>
-                <input type="email" placeholder="email@exemplo.com" value={email} disabled />
-              </div>
-            </div>
-          </section>
-
-          <section className="form-section">
-            <div className="section-title">Endereço</div>
-            <div className="grid-row address-row-1">
-              <div className="field-group xsmall">
-                <label>CEP:</label>
-                <IMaskInput mask="00000-000" value={cep} placeholder="00000-000" className="imask-input" disabled />
-              </div>
-              <div className="field-group button-align">
-                <button className="btn-cep" disabled>BUSCAR CEP</button>
-              </div>
-              <div className="field-group large">
-                <label>LOGRADOURO:</label>
-                <input type="text" placeholder="Rua, Avenida, etc." value={logradouro} disabled />
-              </div>
-              <div className="field-group xsmall">
-                <label>NÚMERO:</label>
-                <input type="text" placeholder="000" value={numero} disabled />
-              </div>
-              <div className="field-group">
-                <label>COMPLEMENTO:</label>
-                <input type="text" placeholder="Apto, Bloco, etc." value={complemento} disabled />
-              </div>
-              <div className="field-group small">
-                <label>ESTADO:</label>
-                <select value={estado} disabled>
-                  <option value="">UF</option>
-                  <option>AC</option><option>AL</option><option>AP</option>
-                  <option>AM</option><option>BA</option><option>CE</option>
-                  <option>DF</option><option>ES</option><option>GO</option>
-                  <option>MA</option><option>MT</option><option>MS</option>
-                  <option>MG</option><option>PA</option><option>PB</option>
-                  <option>PR</option><option>PE</option><option>PI</option>
-                  <option>RJ</option><option>RN</option><option>RS</option>
-                  <option>RO</option><option>RR</option><option>SC</option>
-                  <option>SP</option><option>SE</option><option>TO</option>
-                </select>
-              </div>
-            </div>
-            <div className="grid-row">
-              <div className="field-group">
-                <label>BAIRRO:</label>
-                <input type="text" placeholder="Digite o bairro" value={bairro} disabled />
-              </div>
-              <div className="field-group">
-                <label>CIDADE:</label>
-                <input type="text" placeholder="Digite a cidade" value={cidade} disabled />
-              </div>
-            </div>
-          </section>
-
-          {(String(tipoOperacao) === '1' || String(tipoOperacao) === '4' || String(tipoOperacao) === '5') && (
-            <section className="form-section">
-              <div className="section-title">Dados da Simulação</div>
-              {String(tipoOperacao) === '4' && (
-                <div style={{background: '#3f3b6c', color: 'white', padding: '10px 20px', borderRadius: '6px', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '12px'}}>
-                  <input type="checkbox" id="cartaoPlastico" checked={cartaoComPlastico} disabled style={{width: '20px', height: '20px', accentColor: '#9b98c6'}} />
-                  <label htmlFor="cartaoPlastico" style={{cursor: 'pointer', fontSize: '14px', fontWeight: 'bold', margin: 0, letterSpacing: '1px'}}>CARTÃO COM PLÁSTICO</label>
-                </div>
-              )}
-              <div className="grid-row">
-                <div className="field-group">
-                  <label>VALOR DE PARCELA:</label>
-                  <IMaskInput mask={Number} value={valorParcela} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
-                </div>
-                <div className="field-group">
-                  <label>TAXA DE JUROS:</label>
-                  <IMaskInput mask={Number} value={taxaJuros} placeholder="0,00%" className="imask-input" scale={2} radix="," suffix="%" thousandsSeparator="." disabled />
-                </div>
-                <div className="field-group">
-                  <label>PRAZO:</label>
-                  <select value={prazo} disabled>
-                    <option value="">Selecione</option>
-                    <option value="108">108</option>
-                    <option value="96">96</option>
-                    <option value="84">84</option>
-                    <option value="72">72</option>
-                    <option value="60">60</option>
-                  </select>
-                </div>
-              </div>
-              <div className="grid-row">
-                <div className="field-group">
-                  <label>VALOR LIBERADO:</label>
-                  <IMaskInput mask={Number} value={valorLiberado} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
-                </div>
-                <div className="field-group">
-                  <label>TPS:</label>
-                  <IMaskInput mask={Number} value={tps} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
-                </div>
-                <div className="field-group">
-                  <label>SEGURO:</label>
-                  <select value={seguro} disabled>
-                    <option value="">Selecione</option>
-                    <option value="sim">Sim</option>
-                    <option value="nao">Não</option>
-                  </select>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {String(tipoOperacao) === '2' && (
-            <section className="form-section">
-              <div className="section-title">Dados da Simulação</div>
-              <div style={{display: 'flex', gap: '20px', marginBottom: '20px'}}>
-                <div style={{flex: 1}}>
-                  <div className="subsection-title" style={{marginBottom: '15px'}}>Parcelas</div>
-                  {parcelas.map((parcela, index) => (
-                    <div key={parcela.id} style={{display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'nowrap', marginBottom: '10px'}}>
-                      <div className="field-group" style={{flex: 1, minWidth: 0}}>
-                        <label>VALOR DE PARCELA:</label>
-                        <IMaskInput mask={Number} value={parcela.valor} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
-                      </div>
-                      <div className="field-group" style={{flex: 1, minWidth: 0}}>
-                        <label>PARCELAS RESTANTES:</label>
-                        <select value={parcela.numero} disabled>
-                          <option value="">Selecione</option>
-                          {Array.from({ length: 96 }, (_, i) => i + 1).map(num => (
-                            <option key={num} value={num + 'x'}>{num}x</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  ))}
-                  <div style={{display: 'flex', justifyContent: 'flex-start', marginTop: '10px', alignItems: 'center', gap: '15px'}}>
-                    <button type="button" disabled style={{padding: '5px 15px', backgroundColor: '#4a4a7d', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px'}}>Adicionar</button>
-                    <label style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#999'}}>
-                      <input type="checkbox" checked={unificarParcela === 'sim'} disabled style={{width: '18px', height: '18px', accentColor: '#3f3b6c'}} />
-                      UNIFICAR PARCELA
-                    </label>
-                  </div>
-                </div>
-                <div style={{flex: 1}}>
-                  <div className="subsection-title">Operação</div>
-                  <div className="grid-row">
-                    <div className="field-group">
-                      <label>VALOR LIBERADO:</label>
-                      <IMaskInput mask={Number} value={valorLiberado} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
-                    </div>
-                    <div className="field-group">
-                      <label>PRAZO:</label>
-                      <select value={prazo} disabled>
-                        <option value="">Selecione</option>
-                        <option value="108">108</option>
-                        <option value="96">96</option>
-                        <option value="84">84</option>
-                        <option value="72">72</option>
-                        <option value="60">60</option>
-                      </select>
-                    </div>
-                    <div className="field-group">
-                      <label>TPS:</label>
-                      <IMaskInput mask={Number} value={tps} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
-                    </div>
-                    <div className="field-group">
-                      <label>SEGURO:</label>
-                      <select value={seguro} disabled>
-                        <option value="">Selecione</option>
-                        <option value="sim">Sim</option>
-                        <option value="nao">Não</option>
-                      </select>
-                    </div>
-                    {String(tipoProduto) === '3' && (
-                      <div className="field-group">
-                        <label>MARGEM AGREGADA:</label>
-                        <IMaskInput mask={Number} value={margemAgregada} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
-                      </div>
-                    )}
-                    {unificarParcela === 'sim' && (
-                      <div className="field-group">
-                        <label>VALOR FINAL DE PARCELA:</label>
-                        <IMaskInput mask={Number} value={valorParcelaFinal} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {String(tipoOperacao) === '3' && (
-            <section className="form-section">
-              <div className="section-title">Dados da Simulação</div>
-              <div style={{display: 'flex', gap: '20px', marginBottom: '20px', flexDirection: 'column'}}>
-                <div style={{flex: 1}}>
-                  <div className="subsection-title" style={{marginBottom: '15px'}}>Parcelas</div>
-                  {parcelas.map((parcela, index) => (
-                    <div key={parcela.id} style={{display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'nowrap', marginBottom: '10px'}}>
-                      <div className="field-group" style={{flex: 1, minWidth: 0}}>
-                        <label>BANCO:</label>
-                        <select value={parcela.bancoOrigem} disabled>
-                          <option value="">Selecione</option>
-                          {bancosDisponiveis.map((item) => (
-                            <option key={item.codigo} value={item.codigo}>{item.nome}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="field-group" style={{flex: 1, minWidth: 0}}>
-                        <label>Nº CONTRATO:</label>
-                        <input type="text" placeholder="Nº contrato" value={parcela.numeroContratoOrigem} disabled />
-                      </div>
-                      <div className="field-group" style={{flex: 1, minWidth: 0}}>
-                        <label>SALDO DEVEDOR:</label>
-                        <IMaskInput mask={Number} value={parcela.saldoDevedor} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
-                      </div>
-                      <div className="field-group" style={{flex: 1, minWidth: 0}}>
-                        <label>VALOR DE PARCELA:</label>
-                        <IMaskInput mask={Number} value={parcela.valor} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
-                      </div>
-                      <div className="field-group" style={{flex: 1, minWidth: 0}}>
-                        <label>PARCELAS RESTANTES:</label>
-                        <select value={parcela.numero} disabled>
-                          <option value="">Selecione</option>
-                          {Array.from({ length: 96 }, (_, i) => i + 1).map(num => (
-                            <option key={num} value={num + 'x'}>{num}x</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{flex: 1}}>
-                  <div className="subsection-title">OPERAÇÃO</div>
-                  <div className="grid-row">
-                    <div className="field-group">
-                      <label>VALOR LIBERADO:</label>
-                      <IMaskInput mask={Number} value={valorLiberado} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
-                    </div>
-                    <div className="field-group">
-                      <label>PRAZO:</label>
-                      <select value={prazo} disabled>
-                        <option value="">Selecione</option>
-                        <option value="108">108</option>
-                        <option value="96">96</option>
-                        <option value="84">84</option>
-                        <option value="72">72</option>
-                        <option value="60">60</option>
-                      </select>
-                    </div>
-                    <div className="field-group">
-                      <label>TPS:</label>
-                      <IMaskInput mask={Number} value={tps} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
-                    </div>
-                    <div className="field-group">
-                      <label>SEGURO:</label>
-                      <select value={seguro} disabled>
-                        <option value="">Selecione</option>
-                        <option value="sim">Sim</option>
-                        <option value="nao">Não</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
-
-          <section className="form-section">
-            <div className="section-title">Dados Bancários</div>
-            <div className="grid-row">
-              <div className="field-group">
-                <label>BANCO:</label>
-                <div className="input-with-button">
-                  <select value={dadosBancarios.banco} disabled>
-                    <option value="">Selecione o banco</option>
-                    {bancosRecebimentoDisponiveis.map((item) => (
-                      <option key={item.id} value={item.id}>{item.nome}</option>
-                    ))}
-                  </select>
-                  <button className="btn-modal" disabled>...</button>
-                </div>
-              </div>
-              <div className="field-group">
-                <label>AGÊNCIA:</label>
-                <IMaskInput mask="0000" value={dadosBancarios.agencia} placeholder="0000" className="imask-input" disabled />
-              </div>
-              <div className="field-group">
-                <label>NÚMERO DA CONTA:</label>
-                <input type="text" placeholder="00000" value={dadosBancarios.numeroConta} disabled />
-              </div>
-              <div className="field-group xsmall">
-                <label>DV:</label>
-                <IMaskInput mask="0" value={dadosBancarios.digitoVerificador} placeholder="0" className="imask-input" disabled />
-              </div>
-              <div className="field-group">
-                <label>TIPO DE CONTA:</label>
-                <select value={dadosBancarios.tipoConta} disabled>
-                  <option value="">Selecione</option>
-                  <option value="corrente">Conta Corrente</option>
-                  <option value="poupanca">Conta Poupança</option>
-                  <option value="salario">Conta Salário</option>
-                </select>
-              </div>
-            </div>
-          </section>
-
-          <div className="form-actions">
-            {mensagem.texto && (
-              <div className={`mensagem ${mensagem.tipo}`} style={{ width: '100%', textAlign: 'center', marginBottom: '15px' }}>
-                {mensagem.texto}
-              </div>
-            )}
-            <button className="btn-main" onClick={() => setPaginaAtual('esteira-proposta')}>Voltar</button>
+          <div className="tab-bar">
+            <button className={`tab-btn ${abaAtiva === 'dados' ? 'tab-ativa' : ''}`} onClick={() => setAbaAtiva('dados')}>Dados</button>
+            <button className={`tab-btn ${abaAtiva === 'documentos' ? 'tab-ativa' : ''}`} onClick={() => { const p = JSON.parse(localStorage.getItem('propostaSelecionada_crmwa') || '{}'); if (p.id) carregarDocumentos(p.id); setAbaAtiva('documentos') }}>Documentos</button>
           </div>
+
+          {abaAtiva === 'dados' ? (
+            <>
+              <section className="form-section">
+                <div className="section-title">Operação</div>
+                <div className="grid-row">
+                  <div className="field-group">
+                    <label>BANCO:</label>
+                    <div className="input-with-button">
+                      <select value={banco} disabled>
+                        <option value="">Selecione o banco</option>
+                        {bancosDisponiveis.map((item) => (
+                          <option key={item.id} value={item.id}>{item.nome}</option>
+                        ))}
+                      </select>
+                      <button className="btn-modal" disabled>...</button>
+                    </div>
+                  </div>
+                  <div className="field-group">
+                    <label>TIPO DE OPERAÇÃO:</label>
+                    <select value={tipoOperacao} disabled>
+                      <option value="">Selecione o tipo de operação</option>
+                      {operacoesPermitidas.map((item) => (
+                        <option key={item.id} value={item.id}>{item.nome}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field-group">
+                    <label>TIPO DE PRODUTO:</label>
+                    <select value={tipoProduto} disabled>
+                      <option value="">Selecione o tipo do produto</option>
+                      {tiposProduto
+                        .filter(p => String(p.tipo_operacao_id) === String(tipoOperacao))
+                        .map((item) => (
+                          <option key={item.id} value={item.id}>{item.nome}</option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="grid-row">
+                  <div className="field-group">
+                    <label>TIPO DE CONVÊNIO:</label>
+                    <div className="input-with-button">
+                      <select value={tipoConvenio} disabled>
+                        <option value="">Selecione o convênio</option>
+                        {conveniosDisponiveis.map((item) => (
+                          <option key={item.id} value={item.id}>{item.nome}</option>
+                        ))}
+                      </select>
+                      <button className="btn-modal" disabled>...</button>
+                    </div>
+                  </div>
+                  <div className="field-group">
+                    <label>ORGÃO:</label>
+                    <div className="input-with-button">
+                      <select value={orgao} disabled>
+                        <option value="">Selecione o orgão</option>
+                        {vinculosConvenio.map((item) => (
+                          <option key={item.id} value={item.id}>{item.nome}</option>
+                        ))}
+                      </select>
+                      <button className="btn-modal" disabled>...</button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="form-section">
+                <div className="section-title">Cliente</div>
+                <div className="grid-row">
+                  <div className="field-group" style={{position: 'relative', flex: 2}}>
+                    <label>CPF:</label>
+                    <div style={{display: 'flex', gap: '5px', width: '100%', alignItems: 'stretch'}}>
+                      <IMaskInput
+                        mask="000.000.000-00"
+                        value={cpf}
+                        placeholder="000.000.000-00"
+                        className={`imask-input ${cpfValido === false ? 'input-error' : ''}`}
+                        style={{flex: 1}}
+                        disabled
+                      />
+                      <button className="btn-puxar" style={{marginTop: 0, height: '30px', whiteSpace: 'nowrap'}} disabled>PUXAR CADASTRO</button>
+                    </div>
+                    {cpfValido === false && <span className="error-msg" style={{position: 'absolute', bottom: '-16px', left: '0'}}>CPF inválido</span>}
+                  </div>
+                  <div className="field-group" style={{position: 'relative'}}>
+                    <label>MATRÍCULA:</label>
+                    <input type="text" placeholder="Digite a matrícula" value={matricula} disabled />
+                  </div>
+                  {tipoConvenio === siapePensionistaId && (
+                    <div className="field-group" style={{position: 'relative'}}>
+                      <label>MATRÍCULA INSTITUIDOR:</label>
+                      <input type="text" placeholder="Digite a matrícula do instituidor (7 dígitos)" value={matriculaInstituidor} disabled required />
+                    </div>
+                  )}
+                  <div className="field-group">
+                    <label>DATA DE NASCIMENTO:</label>
+                    <input type="date" value={dataNascimento} disabled />
+                  </div>
+                </div>
+                <div style={{display: 'flex', gap: '15px', width: '100%', alignItems: 'flex-end'}}>
+                  <div className="field-group" style={{marginBottom: 0, flex: '0 0 20%'}}>
+                    <label>MARGEM:</label>
+                    <IMaskInput
+                      mask={Number}
+                      value={margemCliente}
+                      placeholder="R$ 0,00"
+                      className="imask-input"
+                      scale={2}
+                      radix=","
+                      prefix="R$ "
+                      thousandsSeparator="."
+                      style={{backgroundColor: '#d5d5d5'}}
+                      readOnly
+                    />
+                  </div>
+                  <div className="field-group" style={{marginBottom: 0, flex: 1}}>
+                    <label>RESTRIÇÃO:</label>
+                    <div className="msg-bar" style={{backgroundColor: '#d5d5d5', opacity: 0.5, height: '30px', minHeight: '30px'}}></div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="form-section">
+                <div className="section-title">Dados Pessoais</div>
+                <div className="grid-row">
+                  <div className="field-group full-width">
+                    <label>NOME COMPLETO:</label>
+                    <input type="text" placeholder="Digite o nome completo" value={nomeCompleto} disabled />
+                  </div>
+                </div>
+                <div className="grid-row">
+                  <div className="field-group">
+                    <label>SEXO:</label>
+                    <select value={sexo} disabled>
+                      <option value="">Selecione</option>
+                      <option value="masculino">Masculino</option>
+                      <option value="feminino">Feminino</option>
+                      <option value="outro">Outro</option>
+                    </select>
+                  </div>
+                  <div className="field-group">
+                    <label>NÚMERO DO DOCUMENTO:</label>
+                    <input type="text" placeholder="Número do RG" value={numDocumento} disabled />
+                  </div>
+                  <div className="field-group">
+                    <label>CLIENTE ALFABETIZADO:</label>
+                    <select value={alfabetizado} disabled>
+                      <option value="">Selecione</option>
+                      <option value="sim">Sim</option>
+                      <option value="nao">Não</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid-row">
+                  <div className="field-group" style={{flex: 3}}>
+                    <label>NOME DA MÃE:</label>
+                    <input type="text" placeholder="Digite o nome da mãe" value={nomeMae} disabled />
+                  </div>
+                  <div className="field-group small">
+                    <label>UF NAT:</label>
+                    <select value={ufNaturalidade} disabled>
+                      <option value="">UF</option>
+                      <option>AC</option><option>AL</option><option>AP</option>
+                      <option>AM</option><option>BA</option><option>CE</option>
+                      <option>DF</option><option>ES</option><option>GO</option>
+                      <option>MA</option><option>MT</option><option>MS</option>
+                      <option>MG</option><option>PA</option><option>PB</option>
+                      <option>PR</option><option>PE</option><option>PI</option>
+                      <option>RJ</option><option>RN</option><option>RS</option>
+                      <option>RO</option><option>RR</option><option>SC</option>
+                      <option>SP</option><option>SE</option><option>TO</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid-row">
+                  <div className="field-group small">
+                    <label>DDD:</label>
+                    <IMaskInput mask="00" value={ddd} placeholder="00" className="imask-input" disabled />
+                  </div>
+                  <div className="field-group">
+                    <label>TELEFONE:</label>
+                    <IMaskInput mask="00000-0000" value={telefone} placeholder="00000-0000" className="imask-input" disabled />
+                  </div>
+                  <div className="field-group">
+                    <label>EMAIL:</label>
+                    <input type="email" placeholder="email@exemplo.com" value={email} disabled />
+                  </div>
+                </div>
+              </section>
+
+              <section className="form-section">
+                <div className="section-title">Endereço</div>
+                <div className="grid-row address-row-1">
+                  <div className="field-group xsmall">
+                    <label>CEP:</label>
+                    <IMaskInput mask="00000-000" value={cep} placeholder="00000-000" className="imask-input" disabled />
+                  </div>
+                  <div className="field-group button-align">
+                    <button className="btn-cep" disabled>BUSCAR CEP</button>
+                  </div>
+                  <div className="field-group large">
+                    <label>LOGRADOURO:</label>
+                    <input type="text" placeholder="Rua, Avenida, etc." value={logradouro} disabled />
+                  </div>
+                  <div className="field-group xsmall">
+                    <label>NÚMERO:</label>
+                    <input type="text" placeholder="000" value={numero} disabled />
+                  </div>
+                  <div className="field-group">
+                    <label>COMPLEMENTO:</label>
+                    <input type="text" placeholder="Apto, Bloco, etc." value={complemento} disabled />
+                  </div>
+                  <div className="field-group small">
+                    <label>ESTADO:</label>
+                    <select value={estado} disabled>
+                      <option value="">UF</option>
+                      <option>AC</option><option>AL</option><option>AP</option>
+                      <option>AM</option><option>BA</option><option>CE</option>
+                      <option>DF</option><option>ES</option><option>GO</option>
+                      <option>MA</option><option>MT</option><option>MS</option>
+                      <option>MG</option><option>PA</option><option>PB</option>
+                      <option>PR</option><option>PE</option><option>PI</option>
+                      <option>RJ</option><option>RN</option><option>RS</option>
+                      <option>RO</option><option>RR</option><option>SC</option>
+                      <option>SP</option><option>SE</option><option>TO</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid-row">
+                  <div className="field-group">
+                    <label>BAIRRO:</label>
+                    <input type="text" placeholder="Digite o bairro" value={bairro} disabled />
+                  </div>
+                  <div className="field-group">
+                    <label>CIDADE:</label>
+                    <input type="text" placeholder="Digite a cidade" value={cidade} disabled />
+                  </div>
+                </div>
+              </section>
+
+              {(String(tipoOperacao) === '1' || String(tipoOperacao) === '4' || String(tipoOperacao) === '5') && (
+                <section className="form-section">
+                  <div className="section-title">Dados da Simulação</div>
+                  {String(tipoOperacao) === '4' && (
+                    <div style={{background: '#3f3b6c', color: 'white', padding: '10px 20px', borderRadius: '6px', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '12px'}}>
+                      <input type="checkbox" id="cartaoPlastico" checked={cartaoComPlastico} disabled style={{width: '20px', height: '20px', accentColor: '#9b98c6'}} />
+                      <label htmlFor="cartaoPlastico" style={{cursor: 'pointer', fontSize: '14px', fontWeight: 'bold', margin: 0, letterSpacing: '1px'}}>CARTÃO COM PLÁSTICO</label>
+                    </div>
+                  )}
+                  <div className="grid-row">
+                    <div className="field-group">
+                      <label>VALOR DE PARCELA:</label>
+                      <IMaskInput mask={Number} value={valorParcela} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
+                    </div>
+                    <div className="field-group">
+                      <label>TAXA DE JUROS:</label>
+                      <IMaskInput mask={Number} value={taxaJuros} placeholder="0,00%" className="imask-input" scale={2} radix="," suffix="%" thousandsSeparator="." disabled />
+                    </div>
+                    <div className="field-group">
+                      <label>PRAZO:</label>
+                      <select value={prazo} disabled>
+                        <option value="">Selecione</option>
+                        <option value="108">108</option>
+                        <option value="96">96</option>
+                        <option value="84">84</option>
+                        <option value="72">72</option>
+                        <option value="60">60</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid-row">
+                    <div className="field-group">
+                      <label>VALOR LIBERADO:</label>
+                      <IMaskInput mask={Number} value={valorLiberado} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
+                    </div>
+                    <div className="field-group">
+                      <label>TPS:</label>
+                      <IMaskInput mask={Number} value={tps} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
+                    </div>
+                    <div className="field-group">
+                      <label>SEGURO:</label>
+                      <select value={seguro} disabled>
+                        <option value="">Selecione</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                      </select>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {String(tipoOperacao) === '2' && (
+                <section className="form-section">
+                  <div className="section-title">Dados da Simulação</div>
+                  <div style={{display: 'flex', gap: '20px', marginBottom: '20px'}}>
+                    <div style={{flex: 1}}>
+                      <div className="subsection-title" style={{marginBottom: '15px'}}>Parcelas</div>
+                      {parcelas.map((parcela, index) => (
+                        <div key={parcela.id} style={{display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'nowrap', marginBottom: '10px'}}>
+                          <div className="field-group" style={{flex: 1, minWidth: 0}}>
+                            <label>VALOR DE PARCELA:</label>
+                            <IMaskInput mask={Number} value={parcela.valor} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
+                          </div>
+                          <div className="field-group" style={{flex: 1, minWidth: 0}}>
+                            <label>PARCELAS RESTANTES:</label>
+                            <select value={parcela.numero} disabled>
+                              <option value="">Selecione</option>
+                              {Array.from({ length: 96 }, (_, i) => i + 1).map(num => (
+                                <option key={num} value={num + 'x'}>{num}x</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      ))}
+                      <div style={{display: 'flex', justifyContent: 'flex-start', marginTop: '10px', alignItems: 'center', gap: '15px'}}>
+                        <button type="button" disabled style={{padding: '5px 15px', backgroundColor: '#4a4a7d', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px'}}>Adicionar</button>
+                        <label style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#999'}}>
+                          <input type="checkbox" checked={unificarParcela === 'sim'} disabled style={{width: '18px', height: '18px', accentColor: '#3f3b6c'}} />
+                          UNIFICAR PARCELA
+                        </label>
+                      </div>
+                    </div>
+                    <div style={{flex: 1}}>
+                      <div className="subsection-title">Operação</div>
+                      <div className="grid-row">
+                        <div className="field-group">
+                          <label>VALOR LIBERADO:</label>
+                          <IMaskInput mask={Number} value={valorLiberado} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
+                        </div>
+                        <div className="field-group">
+                          <label>PRAZO:</label>
+                          <select value={prazo} disabled>
+                            <option value="">Selecione</option>
+                            <option value="108">108</option>
+                            <option value="96">96</option>
+                            <option value="84">84</option>
+                            <option value="72">72</option>
+                            <option value="60">60</option>
+                          </select>
+                        </div>
+                        <div className="field-group">
+                          <label>TPS:</label>
+                          <IMaskInput mask={Number} value={tps} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
+                        </div>
+                        <div className="field-group">
+                          <label>SEGURO:</label>
+                          <select value={seguro} disabled>
+                            <option value="">Selecione</option>
+                            <option value="sim">Sim</option>
+                            <option value="nao">Não</option>
+                          </select>
+                        </div>
+                        {String(tipoProduto) === '3' && (
+                          <div className="field-group">
+                            <label>MARGEM AGREGADA:</label>
+                            <IMaskInput mask={Number} value={margemAgregada} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
+                          </div>
+                        )}
+                        {unificarParcela === 'sim' && (
+                          <div className="field-group">
+                            <label>VALOR FINAL DE PARCELA:</label>
+                            <IMaskInput mask={Number} value={valorParcelaFinal} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {String(tipoOperacao) === '3' && (
+                <section className="form-section">
+                  <div className="section-title">Dados da Simulação</div>
+                  <div style={{display: 'flex', gap: '20px', marginBottom: '20px', flexDirection: 'column'}}>
+                    <div style={{flex: 1}}>
+                      <div className="subsection-title" style={{marginBottom: '15px'}}>Parcelas</div>
+                      {parcelas.map((parcela, index) => (
+                        <div key={parcela.id} style={{display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'nowrap', marginBottom: '10px'}}>
+                          <div className="field-group" style={{flex: 1, minWidth: 0}}>
+                            <label>BANCO:</label>
+                            <select value={parcela.bancoOrigem} disabled>
+                              <option value="">Selecione</option>
+                              {bancosDisponiveis.map((item) => (
+                                <option key={item.codigo} value={item.codigo}>{item.nome}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="field-group" style={{flex: 1, minWidth: 0}}>
+                            <label>Nº CONTRATO:</label>
+                            <input type="text" placeholder="Nº contrato" value={parcela.numeroContratoOrigem} disabled />
+                          </div>
+                          <div className="field-group" style={{flex: 1, minWidth: 0}}>
+                            <label>SALDO DEVEDOR:</label>
+                            <IMaskInput mask={Number} value={parcela.saldoDevedor} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
+                          </div>
+                          <div className="field-group" style={{flex: 1, minWidth: 0}}>
+                            <label>VALOR DE PARCELA:</label>
+                            <IMaskInput mask={Number} value={parcela.valor} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
+                          </div>
+                          <div className="field-group" style={{flex: 1, minWidth: 0}}>
+                            <label>PARCELAS RESTANTES:</label>
+                            <select value={parcela.numero} disabled>
+                              <option value="">Selecione</option>
+                              {Array.from({ length: 96 }, (_, i) => i + 1).map(num => (
+                                <option key={num} value={num + 'x'}>{num}x</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{flex: 1}}>
+                      <div className="subsection-title">OPERAÇÃO</div>
+                      <div className="grid-row">
+                        <div className="field-group">
+                          <label>VALOR LIBERADO:</label>
+                          <IMaskInput mask={Number} value={valorLiberado} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
+                        </div>
+                        <div className="field-group">
+                          <label>PRAZO:</label>
+                          <select value={prazo} disabled>
+                            <option value="">Selecione</option>
+                            <option value="108">108</option>
+                            <option value="96">96</option>
+                            <option value="84">84</option>
+                            <option value="72">72</option>
+                            <option value="60">60</option>
+                          </select>
+                        </div>
+                        <div className="field-group">
+                          <label>TPS:</label>
+                          <IMaskInput mask={Number} value={tps} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
+                        </div>
+                        <div className="field-group">
+                          <label>SEGURO:</label>
+                          <select value={seguro} disabled>
+                            <option value="">Selecione</option>
+                            <option value="sim">Sim</option>
+                            <option value="nao">Não</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              <section className="form-section">
+                <div className="section-title">Dados Bancários</div>
+                <div className="grid-row">
+                  <div className="field-group">
+                    <label>BANCO:</label>
+                    <div className="input-with-button">
+                      <select value={dadosBancarios.banco} disabled>
+                        <option value="">Selecione o banco</option>
+                        {bancosRecebimentoDisponiveis.map((item) => (
+                          <option key={item.id} value={item.id}>{item.nome}</option>
+                        ))}
+                      </select>
+                      <button className="btn-modal" disabled>...</button>
+                    </div>
+                  </div>
+                  <div className="field-group">
+                    <label>AGÊNCIA:</label>
+                    <IMaskInput mask="0000" value={dadosBancarios.agencia} placeholder="0000" className="imask-input" disabled />
+                  </div>
+                  <div className="field-group">
+                    <label>NÚMERO DA CONTA:</label>
+                    <input type="text" placeholder="00000" value={dadosBancarios.numeroConta} disabled />
+                  </div>
+                  <div className="field-group xsmall">
+                    <label>DV:</label>
+                    <IMaskInput mask="0" value={dadosBancarios.digitoVerificador} placeholder="0" className="imask-input" disabled />
+                  </div>
+                  <div className="field-group">
+                    <label>TIPO DE CONTA:</label>
+                    <select value={dadosBancarios.tipoConta} disabled>
+                      <option value="">Selecione</option>
+                      <option value="corrente">Conta Corrente</option>
+                      <option value="poupanca">Conta Poupança</option>
+                      <option value="salario">Conta Salário</option>
+                    </select>
+                  </div>
+                </div>
+              </section>
+
+              <div className="form-actions">
+                {mensagem.texto && (
+                  <div className={`mensagem ${mensagem.tipo}`} style={{ width: '100%', textAlign: 'center', marginBottom: '15px' }}>
+                    {mensagem.texto}
+                  </div>
+                )}
+                <button className="btn-main" onClick={() => setPaginaAtual('esteira-proposta')}>Voltar</button>
+              </div>
+            </>
+          ) : (
+            <div className="documentos-tab">
+              <section className="secao-container">
+                <header className="secao-header">Documentos</header>
+                {documentos.length === 0 ? (
+                  <p style={{ textAlign: 'center', padding: '20px', color: '#666' }}>Nenhum documento anexado.</p>
+                ) : (
+                  <table className="tabela-documentos">
+                    <thead>
+                      <tr>
+                        <th>Tipo</th>
+                        <th>Arquivo</th>
+                        <th>Data</th>
+                        <th>Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {documentos.map(doc => {
+                        const { data: { publicUrl } } = supabase.storage.from('documentos-proposta').getPublicUrl(doc.storage_path)
+                        return (
+                          <tr key={doc.id}>
+                            <td>{doc.tipo_documento}</td>
+                            <td>{doc.nome_arquivo}</td>
+                            <td>{new Date(doc.criado_em).toLocaleDateString('pt-BR')}</td>
+                            <td><a href={publicUrl} target="_blank" rel="noopener noreferrer" className="btn-visualizar">Visualizar</a></td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </section>
+            </div>
+          )}
         </div>
       </div>
     </>

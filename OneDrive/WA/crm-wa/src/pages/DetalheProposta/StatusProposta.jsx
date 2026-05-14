@@ -5,7 +5,10 @@ import ModalOrgao from '../../components/ModalOrgao/ModalOrgao'
 import ModalConvenio from '../../components/ModalConvenio/ModalConvenio'
 import ModalBanco from '../../components/ModalBanco/ModalBanco'
 import ModalBancoRecebimento from '../../components/ModalBancoRecebimento/ModalBancoRecebimento'
+import ModalAnexarDocumento from '../AnexarDocumento/ModalAnexarDocumento'
 import { supabase } from '../../lib/supabase'
+
+const LOCK_TIMEOUT_MS = 5 * 60 * 1000
 
 export default function StatusProposta({ setPaginaAtual }) {
   const [tipoOperacao, setTipoOperacao] = useState('')
@@ -79,6 +82,9 @@ export default function StatusProposta({ setPaginaAtual }) {
   const [valorParcela, setValorParcela] = useState('')
   const [taxaJuros, setTaxaJuros] = useState('')
   const [codigoTabela, setCodigoTabela] = useState('')
+  const [codigoTabelaOriginal, setCodigoTabelaOriginal] = useState('')
+  const [tpsCorrigida, setTpsCorrigida] = useState('')
+  const [descricao, setDescricao] = useState('')
 
   const [dadosBancarios, setDadosBancarios] = useState({
     banco: '',
@@ -106,8 +112,34 @@ export default function StatusProposta({ setPaginaAtual }) {
   const [numeroParcelasReal, setNumeroParcelasReal] = useState('')
   const [parcelaReal, setParcelaReal] = useState('')
   const [propostaStatusId, setPropostaStatusId] = useState('')
+  const [propostaStatusIdOriginal, setPropostaStatusIdOriginal] = useState('')
   const [listaStatus, setListaStatus] = useState([])
   const [adeBanco, setAdeBanco] = useState('')
+  const [adeBancoOriginal, setAdeBancoOriginal] = useState('')
+  const [modalRedigitarAberto, setModalRedigitarAberto] = useState(false)
+  const [bancoRedigitar, setBancoRedigitar] = useState('')
+  const [modalRedigirSucesso, setModalRedigirSucesso] = useState(false)
+  const [detalheStatusId, setDetalheStatusId] = useState('')
+  const [detalhesStatus, setDetalhesStatus] = useState([])
+
+  const [abaAtiva, setAbaAtiva] = useState('dados')
+  const [documentos, setDocumentos] = useState([])
+  const [modalAnexarOpen, setModalAnexarOpen] = useState(false)
+  const [documentoSelecionado, setDocumentoSelecionado] = useState(null)
+  const [modalConfirmarDelete, setModalConfirmarDelete] = useState(false)
+  const [modalSucesso, setModalSucesso] = useState(false)
+  const [lockError, setLockError] = useState('')
+
+  const TIPOS_DOCUMENTO = [
+    { id: 'identidade', label: 'Documento de identidade' },
+    { id: 'comprovante_residencia', label: 'Comprovante de residência' },
+    { id: 'comprovante_renda', label: 'Contracheque' },
+    { id: 'extrato_inss', label: 'Extrato consignado - Hiscon INSS' },
+    { id: 'contrato', label: 'Contrato' },
+    { id: 'contrato_assinado', label: 'Contrato assinado' },
+    { id: 'recalculo', label: 'Recalculo' },
+  ]
+  const [tipoDocSelecionado, setTipoDocSelecionado] = useState('')
 
   const [prazoRestPosPort, setPrazoRestPosPort] = useState('')
   const [valorParcelaPosPort, setValorParcelaPosPort] = useState('')
@@ -148,6 +180,49 @@ export default function StatusProposta({ setPaginaAtual }) {
   const [cartaoComCompras, setCartaoComCompras] = useState(false)
   const [valorComprasCartao, setValorComprasCartao] = useState('')
   const [valorSaqueCartao, setValorSaqueCartao] = useState('')
+
+  async function adquirirLock(propostaId) {
+    const usuarioId = localStorage.getItem('usuario_id_crmwa')
+    if (!usuarioId) return false
+
+    const { data: lockExistente } = await supabase
+      .from('proposta_lock')
+      .select('*')
+      .eq('proposta_id', propostaId)
+      .single()
+
+    if (lockExistente) {
+      const lockAge = new Date() - new Date(lockExistente.locked_at)
+      if (lockExistente.usuario_id !== parseInt(usuarioId) && lockAge < LOCK_TIMEOUT_MS) {
+        const { data: usuario } = await supabase
+          .from('usuario')
+          .select('nome')
+          .eq('id', lockExistente.usuario_id)
+          .single()
+        setLockError(`Proposta sendo editada por ${usuario?.nome || 'outro usuário'}`)
+        return false
+      }
+    }
+
+    const { error } = await supabase
+      .from('proposta_lock')
+      .upsert(
+        { proposta_id: propostaId, usuario_id: usuarioId },
+        { onConflict: 'proposta_id' }
+      )
+
+    return !error
+  }
+
+  async function liberarLock(propostaId) {
+    const usuarioId = localStorage.getItem('usuario_id_crmwa')
+    if (!usuarioId) return
+    await supabase
+      .from('proposta_lock')
+      .delete()
+      .eq('proposta_id', propostaId)
+      .eq('usuario_id', usuarioId)
+  }
 
   useEffect(() => {
     async function carregarDadosIniciais() {
@@ -306,11 +381,22 @@ export default function StatusProposta({ setPaginaAtual }) {
     }
   }, [parcelasRefin, valorMargemAgregada])
 
+  useEffect(() => {
+    if (!propostaStatusId) { setDetalhesStatus([]); return }
+    supabase
+      .from('detalhe_status')
+      .select('*')
+      .eq('proposta_status_id', parseInt(propostaStatusId))
+      .eq('ativo', true)
+      .order('nome')
+      .then(({ data }) => setDetalhesStatus(data || []))
+  }, [propostaStatusId])
+
   async function carregarValoresReais(propostaId) {
     try {
       const { data, error } = await supabase
         .from('proposta')
-        .select('valor_liberado_real, numero_parcelas_real, parcela_real, proposta_status_id, status')
+        .select('valor_liberado_real, numero_parcelas_real, parcela_real, proposta_status_id, detalhe_status_id')
         .eq('id', propostaId)
         .single()
 
@@ -320,11 +406,10 @@ export default function StatusProposta({ setPaginaAtual }) {
         setValorRealLiberado(data.valor_liberado_real ? data.valor_liberado_real.toFixed(2).replace('.', ',') : '')
         setNumeroParcelasReal(data.numero_parcelas_real?.toString() || '')
         setParcelaReal(data.parcela_real ? data.parcela_real.toFixed(2).replace('.', ',') : '')
+        setDetalheStatusId(data.detalhe_status_id?.toString() || '')
         if (data.proposta_status_id) {
           setPropostaStatusId(String(data.proposta_status_id))
-        } else if (data.status && listaStatus.length > 0) {
-          const status = listaStatus.find(s => s.nome === data.status)
-          if (status) setPropostaStatusId(String(status.id))
+          setPropostaStatusIdOriginal(String(data.proposta_status_id))
         }
       }
     } catch (error) {
@@ -338,20 +423,57 @@ export default function StatusProposta({ setPaginaAtual }) {
       if (!propostaStr) return
       const proposta = JSON.parse(propostaStr)
       if (!proposta.id) return
+
+      const nomeUsuario = localStorage.getItem('usuario_nome_crmwa') || ''
+      const dadosHistorico = {
+        codigo_tabela: codigoTabela || null,
+        valor_parcela: parcelaReal || null,
+        valor_liberado: valorRealLiberado || null,
+        tps: tpsCorrigida || null,
+        proposta_status_id: propostaStatusId ? parseInt(propostaStatusId) : null,
+        ade_banco: adeBanco || null,
+        descricao: descricao || null,
+        detalhe_status_id: detalheStatusId ? parseInt(detalheStatusId) : null,
+        usuario_nome: nomeUsuario
+      }
+
+      const { error: insertError } = await supabase
+        .from('proposta_historico')
+        .insert({ proposta_id: proposta.id, dados: dadosHistorico })
+
+      if (insertError) throw insertError
+
+      const { data: propostaAtual } = await supabase
+        .from('proposta')
+        .select('dados_simulacao')
+        .eq('id', proposta.id)
+        .single()
+
+      const existing = propostaAtual?.dados_simulacao || {}
       const { error } = await supabase
         .from('proposta')
         .update({
           valor_liberado_real: valorRealLiberado ? parseFloat(valorRealLiberado.replace(/[^\d,]/g, '').replace(',', '.')) : null,
+          valor_liberado: valorRealLiberado ? parseFloat(valorRealLiberado.replace(/[^\d,]/g, '').replace(',', '.')) : undefined,
           numero_parcelas_real: numeroParcelasReal ? parseInt(numeroParcelasReal) : null,
           parcela_real: parcelaReal ? parseFloat(parcelaReal.replace(/[^\d,]/g, '').replace(',', '.')) : null,
-          tps: tps ? parseFloat(tps.replace(/[^\d,]/g, '').replace(',', '.')) : null,
+          valor_parcela: parcelaReal ? parseFloat(parcelaReal.replace(/[^\d,]/g, '').replace(',', '.')) : undefined,
+          tps: tpsCorrigida ? parseFloat(tpsCorrigida.replace(/[^\d,]/g, '').replace(',', '.')) : undefined,
           codigo_tabela: codigoTabela || null,
           numero_proposta_banco: adeBanco || null,
-          proposta_status_id: propostaStatusId ? parseInt(propostaStatusId) : null
+          proposta_status_id: propostaStatusId ? parseInt(propostaStatusId) : null,
+          detalhe_status_id: detalheStatusId ? parseInt(detalheStatusId) : null,
+          dados_simulacao: { ...existing, descricao_sidebar: descricao || null }
         })
         .eq('id', proposta.id)
       if (error) throw error
-      setMensagem({ tipo: 'sucesso', texto: 'Valores reais salvos com sucesso!' })
+      setPropostaStatusIdOriginal(propostaStatusId)
+      if (tpsCorrigida) {
+        setTps(tpsCorrigida)
+        setTpsCorrigida('')
+      }
+      setModalSucesso(true)
+      liberarLock(proposta.id)
     } catch (error) {
       console.error('Erro ao salvar Valores Reais:', error)
       setMensagem({ tipo: 'erro', texto: 'Erro ao salvar: ' + error.message })
@@ -474,8 +596,8 @@ export default function StatusProposta({ setPaginaAtual }) {
         setValorLiberado(proposta.valor_liberado.toFixed(2).replace('.', ','))
         setValorLiberadoRefin(proposta.valor_liberado.toFixed(2).replace('.', ','))
       }
-      if (proposta.codigo_tabela) setCodigoTabela(proposta.codigo_tabela)
-      if (proposta.numero_proposta_banco) setAdeBanco(proposta.numero_proposta_banco)
+      if (proposta.codigo_tabela) { setCodigoTabela(proposta.codigo_tabela); setCodigoTabelaOriginal(proposta.codigo_tabela) }
+      if (proposta.numero_proposta_banco) { setAdeBanco(proposta.numero_proposta_banco); setAdeBancoOriginal(proposta.numero_proposta_banco) }
 
       if (parcelasDb && parcelasDb.length > 0) {
         const arr = parcelasDb.map(p => ({
@@ -484,7 +606,8 @@ export default function StatusProposta({ setPaginaAtual }) {
           numero: p.prazo_restante ? p.prazo_restante + 'x' : '',
           bancoOrigem: p.banco_codigo || '',
           numeroContratoOrigem: p.numero_contrato || '',
-          saldoDevedor: p.saldo_devedor ? p.saldo_devedor.toFixed(2).replace('.', ',') : ''
+          saldoDevedor: p.saldo_devedor ? p.saldo_devedor.toFixed(2).replace('.', ',') : '',
+          troco: p.troco ? p.troco.toFixed(2).replace('.', ',') : ''
         }))
         setParcelas(arr)
         setParcelasRefin(arr.map(p => ({ id: p.id, valor: p.valor })))
@@ -514,7 +637,8 @@ export default function StatusProposta({ setPaginaAtual }) {
         if (ds.agregar_margem) setAgregarMargem(ds.agregar_margem ? 'sim' : '')
       }
 
-      if (proposta.proposta_status_id) setPropostaStatusId(String(proposta.proposta_status_id))
+      if (proposta.proposta_status_id) { setPropostaStatusId(String(proposta.proposta_status_id)); setPropostaStatusIdOriginal(String(proposta.proposta_status_id)) }
+      setDetalheStatusId('')
 
       await carregarValoresReais(propostaId)
     } catch (error) {
@@ -531,6 +655,7 @@ export default function StatusProposta({ setPaginaAtual }) {
       const dados = JSON.parse(propostaStr)
       if (dados.id) {
         carregarPropostaCompleta(dados.id)
+        adquirirLock(dados.id)
       } else {
         setMensagem({ tipo: 'erro', texto: 'ID da proposta não encontrado' })
         setLoadingData(false)
@@ -539,7 +664,128 @@ export default function StatusProposta({ setPaginaAtual }) {
       setMensagem({ tipo: 'erro', texto: 'Nenhuma proposta selecionada' })
       setLoadingData(false)
     }
+
+    return () => {
+      const propostaStr = localStorage.getItem('propostaSelecionada_crmwa')
+      if (propostaStr) {
+        const dados = JSON.parse(propostaStr)
+        if (dados.id) liberarLock(dados.id)
+      }
+    }
   }, [])
+
+  async function carregarDocumentos(propostaId) {
+    try {
+      const { data, error } = await supabase
+        .from('documento_proposta')
+        .select('*')
+        .eq('proposta_id', propostaId)
+        .order('criado_em', { ascending: false })
+      if (error) throw error
+      setDocumentos(data || [])
+    } catch (error) {
+      console.error('Erro ao carregar documentos:', error)
+    }
+  }
+
+  async function redigitarProposta() {
+    try {
+      if (!bancoRedigitar) {
+        setMensagem({ tipo: 'erro', texto: 'Selecione um banco para redigitar.' })
+        return
+      }
+
+      const propostaStr = localStorage.getItem('propostaSelecionada_crmwa')
+      if (!propostaStr) { setMensagem({ tipo: 'erro', texto: 'Proposta não encontrada.' }); return }
+      const proposta = JSON.parse(propostaStr)
+      if (!proposta.id) { setMensagem({ tipo: 'erro', texto: 'ID da proposta não encontrado.' }); return }
+
+      setMensagem({ tipo: 'sucesso', texto: 'Redigitando proposta...' })
+
+      const normalizar = (nome) => nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+      const statusAguardando = listaStatus.find(s => normalizar(s.nome).includes('aguardando digitacao'))
+
+      if (!statusAguardando) {
+        setMensagem({ tipo: 'erro', texto: 'Status "Aguardando Digitação" não encontrado.' })
+        return
+      }
+
+      // 1. Buscar dados da original
+      const { data: original } = await supabase
+        .from('proposta')
+        .select('*')
+        .eq('id', proposta.id)
+        .single()
+
+      if (!original) return
+
+      const { data: parcelasOrig } = await supabase
+        .from('proposta_parcela')
+        .select('*')
+        .eq('proposta_id', proposta.id)
+
+      // 3. Criar nova proposta clonada
+      const novaProposta = {
+        banco_credor_id: parseInt(bancoRedigitar),
+        dados_bancarios_id: original.dados_bancarios_id,
+        matricula_id: original.matricula_id,
+        tipo_operacao_id: original.tipo_operacao_id,
+        tipo_produto_id: original.tipo_produto_id,
+        usuario_digitador_id: original.usuario_digitador_id,
+        proposta_status_id: statusAguardando.id,
+        valor_parcela: original.valor_parcela,
+        numero_parcelas: original.numero_parcelas,
+        taxa_juros: original.taxa_juros,
+        tps: original.tps,
+        seguro: original.seguro,
+        valor_liberado: original.valor_liberado,
+        codigo_tabela: original.codigo_tabela,
+        numero_proposta_banco: null,
+        dados_simulacao: original.dados_simulacao
+      }
+
+      const { data: inserida, error } = await supabase
+        .from('proposta')
+        .insert([novaProposta])
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Registrar log na nova proposta
+      const nomeUsuarioRedig = localStorage.getItem('usuario_nome_crmwa') || ''
+      await supabase.from('proposta_historico').insert({
+        proposta_id: inserida.id,
+        dados: { acao: `Proposta clonada da ID WA: ${proposta.id}`, banco_redigitado: parseInt(bancoRedigitar), proposta_status_id: statusAguardando.id, usuario_nome: nomeUsuarioRedig }
+      })
+
+      if (parcelasOrig && parcelasOrig.length > 0) {
+        const novasParcelas = parcelasOrig.map(p => ({
+          proposta_id: inserida.id,
+          tipo: p.tipo,
+          indice: p.indice,
+          valor: p.valor,
+          saldo_devedor: p.saldo_devedor,
+          prazo_restante: p.prazo_restante,
+          banco_codigo: p.banco_codigo,
+          banco_nome: p.banco_nome,
+          numero_contrato: p.numero_contrato,
+          troco: p.troco
+        }))
+        const { error: erroParcelas } = await supabase
+          .from('proposta_parcela')
+          .insert(novasParcelas)
+        if (erroParcelas) throw erroParcelas
+      }
+
+      setModalRedigitarAberto(false)
+      setBancoRedigitar('')
+      setModalRedigirSucesso(true)
+    } catch (error) {
+      console.error('Erro ao redigitar:', error)
+      setMensagem({ tipo: 'erro', texto: 'Erro ao redigitar: ' + error.message })
+    }
+  }
 
   function validarCPF(cpfComMascara) {
     const cpf = cpfComMascara.replace(/[^\d]+/g, '')
@@ -554,6 +800,38 @@ export default function StatusProposta({ setPaginaAtual }) {
     resto = 11 - (soma % 11)
     if (resto === 10 || resto === 11) resto = 0
     return resto === parseInt(cpf.charAt(10))
+  }
+
+  const isReprovado = String(propostaStatusIdOriginal) === '3'
+
+  async function apagarProposta() {
+    try {
+      const propostaStr = localStorage.getItem('propostaSelecionada_crmwa')
+      if (!propostaStr) return
+      const proposta = JSON.parse(propostaStr)
+      if (!proposta.id) return
+
+      for (const tabela of ['proposta_historico', 'proposta_parcela', 'documento_proposta']) {
+        const { error: err } = await supabase
+          .from(tabela)
+          .delete()
+          .eq('proposta_id', proposta.id)
+        if (err) console.error(`Erro ao deletar ${tabela}:`, err)
+      }
+
+      const { error } = await supabase
+        .from('proposta')
+        .delete()
+        .eq('id', proposta.id)
+
+      if (error) throw error
+
+      setModalConfirmarDelete(false)
+      setPaginaAtual('esteira-proposta')
+    } catch (error) {
+      console.error('Erro ao apagar proposta:', error)
+      alert('Erro ao apagar: ' + error.message)
+    }
   }
 
   if (loadingData) {
@@ -578,6 +856,16 @@ export default function StatusProposta({ setPaginaAtual }) {
 
         <div className="main-layout">
           <div className="form-principal">
+            <div className="tab-bar">
+              <button className={`tab-btn ${abaAtiva === 'dados' ? 'tab-ativa' : ''}`} onClick={() => setAbaAtiva('dados')}>Dados</button>
+              <button className={`tab-btn ${abaAtiva === 'documentos' ? 'tab-ativa' : ''}`} onClick={() => { setAbaAtiva('documentos'); carregarDocumentos(JSON.parse(localStorage.getItem('propostaSelecionada_crmwa'))?.id) }}>Documentos</button>
+              {localStorage.getItem('usuario_admin_crmwa') === 'true' && (
+                <button className={`tab-btn ${abaAtiva === 'config' ? 'tab-ativa' : ''}`} onClick={() => setAbaAtiva('config')}>Configuração</button>
+              )}
+            </div>
+
+            {abaAtiva === 'dados' && (
+            <>
               <section className="secao-container">
             <header className="secao-header">Operação</header>
             <div className="grid-row">
@@ -1068,8 +1356,94 @@ export default function StatusProposta({ setPaginaAtual }) {
                 {mensagem.texto}
               </div>
             )}
-            <button className="btn-main" onClick={() => setPaginaAtual('esteira-proposta')}>Voltar</button>
+              <button className="btn-main" onClick={() => setPaginaAtual('esteira-proposta')}>Voltar</button>
+            </div>
+            </>
+            )}
+          {abaAtiva === 'documentos' && (
+            <div className="documentos-tab">
+            <section className="secao-container">
+              <header className="secao-header">Documentos</header>
+              <div style={{ padding: '8px 12px' }}>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '10px' }}>
+                  <select value={tipoDocSelecionado} onChange={(e) => setTipoDocSelecionado(e.target.value)} style={{ flex: 1, height: '28px', fontSize: '12px', padding: '0 6px' }}>
+                    <option value="">Selecione o tipo de documento</option>
+                    {TIPOS_DOCUMENTO.map(tipo => (
+                      <option key={tipo.id} value={tipo.id}>{tipo.label}</option>
+                    ))}
+                  </select>
+                  <button
+                    className="btn-anexar-tipo"
+                    disabled={!tipoDocSelecionado}
+                    onClick={() => {
+                      const tipo = TIPOS_DOCUMENTO.find(t => t.id === tipoDocSelecionado)
+                      if (tipo) {
+                        setDocumentoSelecionado(tipo)
+                        setModalAnexarOpen(true)
+                      }
+                    }}
+                  >
+                    Anexar
+                  </button>
+                </div>
+                {documentos.length === 0 ? (
+                  <p style={{ textAlign: 'center', padding: '20px', color: '#666' }}>Nenhum documento anexado.</p>
+                ) : (
+                  <table className="tabela-documentos">
+                    <thead>
+                      <tr>
+                        <th>Tipo</th>
+                        <th>Arquivo</th>
+                        <th>Data</th>
+                        <th>Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {documentos.map(doc => {
+                        const { data: { publicUrl } } = supabase.storage.from('documentos-proposta').getPublicUrl(doc.storage_path)
+                        return (
+                          <tr key={doc.id}>
+                            <td>{doc.tipo_documento}</td>
+                            <td>{doc.nome_arquivo}</td>
+                            <td>{new Date(doc.criado_em).toLocaleDateString('pt-BR')}</td>
+                            <td><a href={publicUrl} target="_blank" rel="noopener noreferrer" className="btn-visualizar">Visualizar</a></td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </section>
           </div>
+          )}
+          {abaAtiva === 'config' && (
+            <div className="config-tab">
+              <section className="secao-container">
+                <header className="secao-header">Configuração</header>
+                <div style={{ padding: '15px' }}>
+                  {localStorage.getItem('usuario_admin_crmwa') === 'true' && (
+                    <button
+                      className="btn-deletar-proposta"
+                      onClick={() => setModalConfirmarDelete(true)}
+                      style={{
+                        backgroundColor: '#dc3545',
+                        color: 'white',
+                        border: 'none',
+                        padding: '10px 20px',
+                        borderRadius: '5px',
+                        fontSize: '13px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Apagar Proposta
+                    </button>
+                  )}
+                </div>
+              </section>
+            </div>
+          )}
           </div>
           <aside className="painel-mudancas">
             <header className="secao-header-lateral">
@@ -1078,24 +1452,28 @@ export default function StatusProposta({ setPaginaAtual }) {
             <div className="conteudo-lateral">
               <div className="campo-lateral">
                 <label>CÓDIGO DA TABELA DIGITADA:</label>
-                <input type="text" value={codigoTabela} onChange={(e) => setCodigoTabela(e.target.value)} className="input-estilizado" />
+                <input type="text" value={codigoTabela} onChange={(e) => setCodigoTabela(e.target.value)} className="input-estilizado" disabled={isReprovado || !!codigoTabelaOriginal} />
               </div>
               <div className="campo-lateral">
                 <label>VALOR REAL DA PARCELA:</label>
-                <IMaskInput mask={Number} value={parcelaReal} onAccept={(v) => setParcelaReal(v)} className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." />
+                <IMaskInput mask={Number} value={parcelaReal} onAccept={(v) => setParcelaReal(v)} className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled={isReprovado} />
+              </div>
+              <div className="campo-lateral">
+                <label>PRAZO REAL:</label>
+                <input type="text" value={numeroParcelasReal} onChange={(e) => setNumeroParcelasReal(e.target.value)} className="input-estilizado" disabled={isReprovado} />
               </div>
               <div className="campo-lateral">
                 <label>VALOR REAL LIBERADO:</label>
-                <IMaskInput mask={Number} value={valorRealLiberado} onAccept={(v) => setValorRealLiberado(v)} className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." />
+                <IMaskInput mask={Number} value={valorRealLiberado} onAccept={(v) => setValorRealLiberado(v)} className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled={isReprovado} />
               </div>
               <div className="campo-lateral">
                 <label>TPS CORRIGIDA:</label>
-                <IMaskInput mask={Number} value={tps} onAccept={(v) => setTps(v)} className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." />
+                <IMaskInput mask={Number} value={tpsCorrigida} onAccept={(v) => setTpsCorrigida(v)} className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled={isReprovado} />
               </div>
               <div className="campo-lateral">
                 <label>STATUS PROPOSTA:</label>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <select value={propostaStatusId} onChange={(e) => setPropostaStatusId(e.target.value)} style={{ flex: 1 }}>
+                  <select value={propostaStatusId} onChange={(e) => { setPropostaStatusId(e.target.value); setDetalheStatusId('') }} style={{ flex: 1 }} disabled={isReprovado}>
                     <option value="">Selecione</option>
                     {listaStatus.map((s) => (
                       <option key={s.id} value={s.id}>{s.nome}</option>
@@ -1108,15 +1486,111 @@ export default function StatusProposta({ setPaginaAtual }) {
                   )}
                 </div>
               </div>
+              {!['1', '2', '6'].includes(String(propostaStatusId)) && (
+              <div className="campo-lateral">
+                <label>{String(propostaStatusId) === '3' ? 'MOTIVO DA REPROVA:' : String(propostaStatusId) === '5' ? 'MOTIVO DA PENDÊNCIA:' : String(propostaStatusId) === '7' ? 'LINK:' : 'DESCRIÇÃO:'}</label>
+                {detalhesStatus.length > 0 ? (
+                  <select value={detalheStatusId} onChange={(e) => setDetalheStatusId(e.target.value)} disabled={isReprovado}>
+                    <option value="">Selecione</option>
+                    {detalhesStatus.map((d) => (
+                      <option key={d.id} value={d.id}>{d.nome}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input type="text" value={descricao} onChange={(e) => setDescricao(e.target.value)} className="input-estilizado" disabled={isReprovado} />
+                )}
+              </div>
+              )}
               <div className="campo-lateral">
                 <label>ADE BANCO:</label>
-                <input type="text" value={adeBanco} onChange={(e) => setAdeBanco(e.target.value)} className="input-estilizado" />
+                <input type="text" value={adeBanco} onChange={(e) => setAdeBanco(e.target.value)} className="input-estilizado" disabled={isReprovado || !!adeBancoOriginal} />
               </div>
-              <button className="btn-salvar-lateral" onClick={salvarValoresReais}>Salvar</button>
+              {lockError && <div className="lock-warning" style={{ color: '#d32f2f', fontSize: '13px', marginBottom: '8px', textAlign: 'center' }}>{lockError}</div>}
+              <button className="btn-salvar-lateral" onClick={salvarValoresReais} disabled={!!lockError}>Salvar</button>
+              {String(propostaStatusId) === '3' && (
+                <button className="btn-redigitar" onClick={() => setModalRedigitarAberto(true)}>REDIGITAR</button>
+              )}
             </div>
           </aside>
         </div>
       </div>
+
+      {modalRedigirSucesso && (
+        <div className="success-modal-overlay" onClick={() => { setModalRedigirSucesso(false); setPaginaAtual('esteira-proposta') }}>
+          <div className="success-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="success-modal-icon">✓</div>
+            <h3>Proposta recadastrada com sucesso!</h3>
+            <p>A nova proposta foi criada e a original cancelada.</p>
+            <button className="success-modal-btn" onClick={() => { setModalRedigirSucesso(false); setPaginaAtual('esteira-proposta') }}>OK</button>
+          </div>
+        </div>
+      )}
+
+      {modalRedigitarAberto && (
+        <div className="success-modal-overlay" onClick={() => setModalRedigitarAberto(false)}>
+          <div className="success-modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="success-modal-icon" style={{ fontSize: '24px' }}>🔄</div>
+            <h3>Redigitar Proposta</h3>
+            <p>Selecione o banco para redigitar a proposta:</p>
+            {bancosDisponiveis.length === 0 ? (
+              <p style={{ color: '#999', textAlign: 'center' }}>Nenhum banco disponível.</p>
+            ) : (
+            <select value={bancoRedigitar} onChange={(e) => setBancoRedigitar(e.target.value)} style={{ width: '100%', height: '36px', marginBottom: '20px', padding: '5px', fontSize: '13px' }}>
+              <option value="">Selecione um banco</option>
+              {bancosDisponiveis.map((b) => (
+                <option key={b.id} value={b.id}>{b.nome}</option>
+              ))}
+            </select>
+            )}
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button className="success-modal-btn" onClick={redigitarProposta}>CONFIRMAR</button>
+              <button className="success-modal-btn" onClick={() => setModalRedigitarAberto(false)} style={{ backgroundColor: '#999' }}>CANCELAR</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalSucesso && (
+        <div className="success-modal-overlay" onClick={() => { setModalSucesso(false); setPaginaAtual('esteira-proposta') }}>
+          <div className="success-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="success-modal-icon">✓</div>
+            <h3>Dados salvos com sucesso!</h3>
+            <p>Os dados foram salvos.</p>
+            <button className="success-modal-btn" onClick={() => { setModalSucesso(false); setPaginaAtual('esteira-proposta') }}>OK</button>
+          </div>
+        </div>
+      )}
+
+      {modalConfirmarDelete && (
+        <div className="success-modal-overlay" onClick={() => setModalConfirmarDelete(false)}>
+          <div className="success-modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="success-modal-icon" style={{ fontSize: '24px' }}>⚠️</div>
+            <h3>Apagar Proposta</h3>
+            <p>Tem certeza que deseja apagar esta proposta? Esta ação não pode ser desfeita.</p>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '15px' }}>
+              <button className="success-modal-btn" onClick={apagarProposta} style={{ backgroundColor: '#dc3545' }}>APAGAR</button>
+              <button className="success-modal-btn" onClick={() => setModalConfirmarDelete(false)} style={{ backgroundColor: '#999' }}>CANCELAR</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalAnexarOpen && documentoSelecionado && (
+        <ModalAnexarDocumento
+          key={documentoSelecionado.id}
+          isOpen={modalAnexarOpen}
+          onClose={() => setModalAnexarOpen(false)}
+          propostaId={JSON.parse(localStorage.getItem('propostaSelecionada_crmwa') || '{}')?.id}
+          tipoDocumento={documentoSelecionado.id}
+          tipoLabel={documentoSelecionado.label}
+          onAnexar={() => {
+            const pid = JSON.parse(localStorage.getItem('propostaSelecionada_crmwa') || '{}')?.id
+            if (pid) carregarDocumentos(pid)
+            setModalAnexarOpen(false)
+          }}
+          anexosExistentes={documentos.filter(d => d.tipo_documento === documentoSelecionado.id)}
+        />
+      )}
     </>
   )
 }

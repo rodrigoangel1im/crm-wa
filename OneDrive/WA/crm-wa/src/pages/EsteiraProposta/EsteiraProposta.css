@@ -622,10 +622,32 @@
   background-color: #333666;
 }
 
+.btn-refresh {
+  background-color: #41457a;
+  border: none;
+  border-radius: 5px;
+  font-size: 20px;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  margin-top: 22px;
+  transition: background 0.2s;
+  line-height: 1;
+}
+
+.btn-refresh:hover {
+  background-color: #333666;
+}
+
 .tabela-container {
   overflow-x: auto;
   border-radius: 8px;
   border: 1px solid #ddd;
+  min-height: 430px;
 }
 
 .tabela-propostas {
@@ -685,4 +707,19 @@
 .valor-cell {
   font-weight: bold;
   color: #41457a;
+}
+
+.troco-cell {
+  min-width: 120px;
+}
+
+.troco-chip {
+  display: inline-block;
+  background: linear-gradient(135deg, #3f3b6c, #2a2750);
+  color: #f0c977;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
 }

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { supabase } from '../../lib/supabase'
 import './Navbar.css'
 
 export default function Navbar({ paginaAtual, setPaginaAtual }) {
@@ -85,7 +86,7 @@ export default function Navbar({ paginaAtual, setPaginaAtual }) {
               <a href="#" onClick={(e) => { e.preventDefault(); setPaginaAtual('perfil'); setPerfilOpen(false) }}>
                 Editar perfil
               </a>
-              <a href="#" onClick={(e) => { e.preventDefault(); setPaginaAtual('login'); setPerfilOpen(false) }} className="logout-link">
+              <a href="#" onClick={async (e) => { e.preventDefault(); await supabase.auth.signOut(); setPerfilOpen(false) }} className="logout-link">
                 Sair
               </a>
             </div>

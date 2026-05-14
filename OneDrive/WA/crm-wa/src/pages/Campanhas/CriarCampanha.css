@@ -1,0 +1,286 @@
+.form-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.form-header {
+  background: #3f3b6c;
+  padding: 30px;
+  color: white;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-header h1 {
+  margin-left: 10%;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.form-content {
+  background: #f7f7f7;
+  width: 85%;
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 20px;
+  box-sizing: border-box;
+}
+
+.form-section {
+  margin-bottom: 25px;
+}
+
+.section-title {
+  background-color: #3f3b6c;
+  color: white;
+  padding: 8px 15px;
+  border-radius: 5px;
+  font-size: 14px;
+  margin-bottom: 15px;
+}
+
+.grid-row {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 180px;
+}
+
+.field-group label {
+  font-size: 11px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.field-group input,
+.field-group select {
+  background-color: #b5b2d9;
+  border: 1px solid #8e8bb3;
+  padding: 5px;
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+
+.field-group input:focus,
+.field-group select:focus {
+  outline: none;
+  border-color: #3f3b6c;
+  box-shadow: 0 0 0 2px rgba(63, 59, 108, 0.2);
+}
+
+.field-group textarea {
+  background-color: #b5b2d9;
+  border: 1px solid #8e8bb3;
+  padding: 5px;
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  resize: vertical;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.field-group textarea:focus {
+  outline: none;
+  border-color: #3f3b6c;
+  box-shadow: 0 0 0 2px rgba(63, 59, 108, 0.2);
+}
+
+.field-group.full-width {
+  flex: 100%;
+  min-width: 100%;
+}
+
+.input-with-button {
+  display: flex;
+  gap: 5px;
+}
+
+.input-with-button input,
+.input-with-button select {
+  flex: 1;
+  width: 100%;
+}
+
+.btn-modal {
+  background: #3f3b6c;
+  color: white;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.btn-modal:hover {
+  background: #2a2750;
+}
+
+.whatsapp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.whatsapp-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(181, 178, 217, 0.3);
+  border: 1px solid #8e8bb3;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+
+.whatsapp-item:hover {
+  background: rgba(181, 178, 217, 0.5);
+}
+
+.whatsapp-item input[type="checkbox"] {
+  accent-color: #3f3b6c;
+}
+
+.whatsapp-tipo {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.whatsapp-tipo.oficial {
+  background: #2e7d32;
+  color: #fff;
+}
+
+.whatsapp-tipo.nao_oficial {
+  background: #e65100;
+  color: #fff;
+}
+
+.empty-msg {
+  color: #666;
+  font-size: 13px;
+  font-style: italic;
+}
+
+.btn-remove {
+  background: none;
+  border: none;
+  color: #c62828;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 4px;
+  margin-left: auto;
+  line-height: 1;
+}
+
+.btn-remove:hover {
+  color: #e53935;
+}
+
+.whatsapp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.whatsapp-table th {
+  text-align: left;
+  padding: 10px 12px;
+  background: #3f3b6c;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.whatsapp-table th:first-child {
+  border-radius: 6px 0 0 0;
+}
+
+.whatsapp-table th:last-child {
+  border-radius: 0 6px 0 0;
+}
+
+.whatsapp-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #ddd;
+  background: #fff;
+}
+
+.whatsapp-table tr.selected td {
+  background: #e8e5f0;
+}
+
+.whatsapp-table tr:hover td {
+  background: #f0eef6;
+}
+
+.whatsapp-table input[type="checkbox"] {
+  accent-color: #3f3b6c;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.btn-drive {
+  background: #3f3b6c;
+  color: #f0c977;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.25s ease;
+}
+
+.btn-drive:hover {
+  background: #2a2750;
+  transform: translateY(-1px);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.btn-cadastrar {
+  background: linear-gradient(135deg, #3f3b6c, #2a2750);
+  color: #f0c977;
+  border: none;
+  padding: 12px 40px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 20px rgba(63, 59, 108, 0.3);
+}
+
+.btn-cadastrar:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 30px rgba(63, 59, 108, 0.4);
+}

@@ -1,0 +1,24 @@
+﻿</section>
+
+        {/* Rodapé de Ações */}
+        <div className="form-actions">
+          {mensagem.texto && (
+            <div className={`mensagem ${mensagem.tipo}`}>
+              {mensagem.texto}
+            </div>
+          )}
+          <button
+            className="btn-main"
+            onClick={handleSubmit}
+            disabled={submitting || !secoesAposClienteDesbloqueadas}
+          >
+            {submitting ? 'ENVIANDO...' : 'CADASTRAR'}
+          </button>
+          <button className="btn-sub" onClick={handleCancelar} disabled={submitting}>CANCELAR</button>
+          <button className="btn-sub" onClick={() => window.history.back()} disabled={submitting}>VOLTAR</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+

@@ -1,89 +1,95 @@
 ﻿import './EsteiraProposta.css'
 import { supabase } from '../../lib/supabase'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import ModalDetalheProposta from '../../components/ModalDetalheProposta/ModalDetalheProposta'
 
 export default function EsteiraProposta({ setPaginaAtual }) {
   const [propostas, setPropostas] = useState([])
   const [loading, setLoading] = useState(true)
+  const [pagina, setPagina] = useState(1)
+  const [totalPaginas, setTotalPaginas] = useState(1)
+  const propostasRef = useRef([])
+  const statusFiltroExcluirRef = useRef(null)
+  const ITENS_POR_PAGINA = 10
+
+  useEffect(() => {
+    propostasRef.current = propostas
+  }, [propostas])
   const [modalDetalheOpen, setModalDetalheOpen] = useState(false)
   const [modalDetalheId, setModalDetalheId] = useState(null)
 
   useEffect(() => {
-    carregarPropostas()
+    carregarPropostas(pagina)
+  }, [pagina])
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const ids = propostasRef.current.map(p => p.id)
+      if (ids.length === 0) return
+
+      const LOCK_TIMEOUT = 5 * 60 * 1000
+      const { data: locksAtivos } = await supabase
+        .from('proposta_lock')
+        .select('*')
+        .in('proposta_id', ids)
+
+      const usuarioIdLogado = parseInt(localStorage.getItem('usuario_id_crmwa') || '0')
+      const lockedById = {}
+      if (locksAtivos) {
+        locksAtivos.forEach(l => {
+          if (new Date() - new Date(l.locked_at) < LOCK_TIMEOUT) {
+            lockedById[l.proposta_id] = l.usuario_id
+          }
+        })
+      }
+
+      setPropostas(prev => prev.map(p => ({
+        ...p,
+        locked: !!lockedById[p.id],
+        lockedByMe: lockedById[p.id] === usuarioIdLogado
+      })))
+    }, 30000)
+
+    return () => clearInterval(interval)
   }, [])
 
-  async function inserirPropostaTeste() {
-    try {
-      // Atenção: Para inserir na tabela proposta, você precisa ter IDs válidos nas tabelas relacionadas:
-      // banco_credor_id, dados_bancarios_id, matricula_id, tipo_operacao_id, tipo_produto_id, usuario_digitador_id
-      // Por enquanto, vamos apenas testar buscando um ID qualquer existente (ou usar NULL se a coluna permitir)
-      
-      // Buscar um ID de banco existente
-      const { data: bancoData } = await supabase.from('banco_operacao').select('id').limit(1)
-      const bancoId = bancoData?.[0]?.id || null
-      
-      // Buscar um ID de cliente e matrícula
-      const { data: matriculaData } = await supabase.from('matricula').select('id').limit(1)
-      const matriculaId = matriculaData?.[0]?.id || null
-      
-      // Buscar um ID de dados bancários
-      const { data: dadosBancData } = await supabase.from('dados_bancarios').select('id').limit(1)
-      const dadosBancariosId = dadosBancData?.[0]?.id || null
-      
-      // Buscar IDs de tipo_operacao e tipo_produto
-      const { data: operacaoData } = await supabase.from('tipo_operacao').select('id').limit(1)
-      const operacaoId = operacaoData?.[0]?.id || null
-      
-      const { data: produtoData } = await supabase.from('tipo_produto').select('id').limit(1)
-      const produtoId = produtoData?.[0]?.id || null
-      
-      // Buscar um ID de usuario
-      const { data: usuarioData } = await supabase.from('usuario').select('id').limit(1)
-      const usuarioId = usuarioData?.[0]?.id || null
-      
-      const novaProposta = {
-        numero_proposta_banco: '2025' + Date.now().toString().slice(-6),
-        banco_credor_id: bancoId,
-        dados_bancarios_id: dadosBancariosId,
-        matricula_id: matriculaId,
-        tipo_operacao_id: operacaoId,
-        tipo_produto_id: produtoId,
-        usuario_digitador_id: usuarioId,
-        proposta_status_id: 1, // Em Análise
-        valor_liberado: 7500.00,
-        valor_liberado_real: null,
-        parcela_real: null,
-        numero_parcelas_real: null
-      }
-      
-      const { data, error } = await supabase
-        .from('proposta')
-        .insert([novaProposta])
-        .select()
-      
-      if (error) throw error
-      
-      console.log('Proposta inserida com sucesso:', data)
-      alert('Proposta cadastrada com sucesso!')
-      carregarPropostas() // Recarrega a lista
-    } catch (error) {
-      console.error('Erro ao inserir proposta:', error)
-      alert('Erro ao cadastrar: ' + error.message)
-    }
-  }
-
-  async function carregarPropostas() {
+  async function carregarPropostas(page = 1) {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+
+      if (!statusFiltroExcluirRef.current) {
+        const { data: allStatuses } = await supabase
+          .from('proposta_status')
+          .select('id, nome')
+        if (allStatuses) {
+          const targetNames = ['integrado', 'reprovado']
+          statusFiltroExcluirRef.current = allStatuses
+            .filter(s => targetNames.includes(s.nome.toLowerCase()))
+            .map(s => s.id)
+        } else {
+          statusFiltroExcluirRef.current = []
+        }
+      }
+
+      const start = (page - 1) * ITENS_POR_PAGINA
+      const end = start + ITENS_POR_PAGINA - 1
+
+      const perfil = localStorage.getItem('usuario_perfil_crmwa') || ''
+      const usuarioId = parseInt(localStorage.getItem('usuario_id_crmwa') || '0')
+
+      let query = supabase
         .from('proposta')
         .select(`
           id,
           numero_proposta_banco,
           proposta_status_id,
           proposta_status:proposta_status_id (nome, cor, historico),
+          usuario_digitador_id,
+          usuario_digitador:usuario_digitador_id (nome),
           valor_liberado,
+          valor_liberado_real,
+          valor_parcela,
+          parcela_real,
           atualizado_em,
           matricula (
             cliente (nome_completo, cpf),
@@ -91,13 +97,96 @@ export default function EsteiraProposta({ setPaginaAtual }) {
           ),
           banco_credor:banco_credor_id (nome),
           tipo_operacao:tipo_operacao_id (nome)
-        `)
-        .order('atualizado_em', { ascending: false })
+        `, { count: 'exact' })
+        .order('atualizado_em', { ascending: true })
+        .range(start, end)
 
-      if (error) throw error
+      if (statusFiltroExcluirRef.current.length > 0) {
+        query = query.not('proposta_status_id', 'in', `(${statusFiltroExcluirRef.current.join(',')})`)
+      }
 
-      const propostasFormatadas = data.map(item => ({
+      if (perfil === 'Vendedor' && usuarioId) {
+        query = query.eq('usuario_digitador_id', usuarioId)
+      }
+
+      const { data, error, count } = await query
+
+      if (error) {
+        console.error('Erro ao carregar propostas:', error)
+        return
+      }
+
+      if (!data || data.length === 0) {
+        setPropostas([])
+        return
+      }
+
+      const ids = data.map(p => p.id)
+      const { data: parcelasData, error: parcelasError } = await supabase
+        .from('proposta_parcela')
+        .select('proposta_id, indice, valor, troco')
+        .in('proposta_id', ids)
+
+      if (parcelasError) {
+        console.error('Erro ao carregar parcelas:', parcelasError)
+      }
+
+      const parcelasPorProposta = {}
+      if (parcelasData) {
+        parcelasData.forEach(p => {
+          if (!parcelasPorProposta[p.proposta_id]) parcelasPorProposta[p.proposta_id] = []
+          parcelasPorProposta[p.proposta_id].push(p)
+        })
+      }
+
+      const { data: historicoData, error: historicoError } = await supabase
+        .from('proposta_historico')
+        .select('proposta_id, criado_em')
+        .in('proposta_id', ids)
+        .order('criado_em', { ascending: false })
+
+      if (historicoError) {
+        console.error('Erro ao carregar histórico:', historicoError)
+      }
+
+      const latestHistorico = {}
+      if (historicoData) {
+        historicoData.forEach(h => {
+          if (!latestHistorico[h.proposta_id]) {
+            latestHistorico[h.proposta_id] = h.criado_em
+          }
+        })
+      }
+
+      const LOCK_TIMEOUT = 5 * 60 * 1000
+      const { data: locksAtivos } = await supabase
+        .from('proposta_lock')
+        .select('*')
+        .in('proposta_id', ids)
+
+      const usuarioIdLogado = parseInt(localStorage.getItem('usuario_id_crmwa') || '0')
+      const lockedById = {}
+      if (locksAtivos) {
+        locksAtivos.forEach(l => {
+          if (new Date() - new Date(l.locked_at) < LOCK_TIMEOUT) {
+            lockedById[l.proposta_id] = l.usuario_id
+          }
+        })
+      }
+
+      function formatarBrasilia(iso) {
+        if (!iso) return { data: '', hora: '' }
+        const d = new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000)
+        const partes = d.toISOString().split('T')
+        return { data: partes[0], hora: partes[1]?.substring(0, 5) || '' }
+      }
+
+      const propostasFormatadas = data.map(item => {
+        const ultimaAtualizacao = latestHistorico[item.id] || item.atualizado_em
+        const { data: dataAtualizacao, hora: horaAtualizacao } = formatarBrasilia(ultimaAtualizacao)
+        return {
         id: item.id,
+        proposta_status_id: item.proposta_status_id,
         adeWa: item.id,
         propostaBanco: item.numero_proposta_banco,
         nomeCliente: item.matricula?.cliente?.nome_completo || 'N/A',
@@ -106,14 +195,31 @@ export default function EsteiraProposta({ setPaginaAtual }) {
         statusCor: item.proposta_status?.cor || '#333',
         statusHistorico: item.proposta_status?.historico || '',
         valorLiberado: item.valor_liberado,
+        valorLiberadoReal: item.valor_liberado_real,
+        valorParcela: item.valor_parcela,
+        parcelaReal: item.parcela_real,
         banco: item.banco_credor?.nome || 'N/A',
         operacao: item.tipo_operacao?.nome || 'N/A',
         convenio: item.matricula?.convenio?.nome || 'N/A',
-        dataAtualizacao: item.atualizado_em ? item.atualizado_em.split('T')[0] : '',
-        horaAtualizacao: item.atualizado_em ? new Date(item.atualizado_em).toTimeString().split(' ')[0].slice(0,5) : ''
-      }))
+        dataAtualizacao,
+        horaAtualizacao,
+        usuarioDigitador: item.usuario_digitador?.nome || 'N/A',
+        tempoDecorrido: ultimaAtualizacao && !['integrado', 'reprovado'].includes(item.proposta_status?.nome?.toLowerCase()) ? calcularTempoDecorrido(ultimaAtualizacao) : '',
+        parcelas: parcelasPorProposta[item.id] || [],
+        _sort: ultimaAtualizacao,
+        locked: !!lockedById[item.id],
+        lockedByMe: lockedById[item.id] === usuarioIdLogado
+      }})
+
+      propostasFormatadas.sort((a, b) => {
+        if (!a._sort && !b._sort) return 0
+        if (!a._sort) return 1
+        if (!b._sort) return -1
+        return new Date(a._sort) - new Date(b._sort)
+      })
 
       setPropostas(propostasFormatadas)
+      setTotalPaginas(count ? Math.ceil(count / ITENS_POR_PAGINA) : 1)
     } catch (error) {
       console.error('Erro ao carregar propostas:', error)
     } finally {
@@ -131,6 +237,11 @@ export default function EsteiraProposta({ setPaginaAtual }) {
   }
 
   const handleStatusClick = (item) => {
+    const perfil = localStorage.getItem('usuario_perfil_crmwa') || ''
+    if (perfil === 'Vendedor') return
+    if (item.proposta_status_id === 2) return
+    if ((item.status || '').toLowerCase() === 'integrado' && perfil !== 'Administrador') return
+    if (item.locked && !item.lockedByMe) return
     localStorage.setItem('propostaSelecionada_crmwa', JSON.stringify(item))
     setPaginaAtual('status-proposta')
   }
@@ -138,6 +249,26 @@ export default function EsteiraProposta({ setPaginaAtual }) {
   const handleAdeWaClick = (item) => {
     localStorage.setItem('propostaSelecionada_crmwa', JSON.stringify(item))
     setPaginaAtual('detalhe-proposta')
+  }
+
+  function calcularTempoDecorrido(timestamp) {
+    if (!timestamp) return ''
+    const agora = new Date()
+    const atualizacao = new Date(timestamp)
+    const diffMs = agora - atualizacao
+    const diffMin = Math.floor(diffMs / 60000)
+
+    if (diffMin < 1) return 'Agora mesmo'
+    if (diffMin < 60) return `${diffMin} min atrás`
+
+    const diffHoras = Math.floor(diffMin / 60)
+    if (diffHoras < 24) return `${diffHoras} h atrás`
+
+    const diffDias = Math.floor(diffHoras / 24)
+    if (diffDias < 30) return `${diffDias} dia${diffDias > 1 ? 's' : ''} atrás`
+
+    const diffMeses = Math.floor(diffDias / 30)
+    return `${diffMeses} mês${diffMeses > 1 ? 'es' : ''} atrás`
   }
 
   if (loading) {
@@ -181,8 +312,8 @@ export default function EsteiraProposta({ setPaginaAtual }) {
           </div>
 
           <button className="btn-pesquisar">Pesquisar</button>
-          <button className="btn-pesquisar" onClick={inserirPropostaTeste} style={{ backgroundColor: '#28a745', marginLeft: '10px' }}>
-            + Testar Cadastro
+          <button className="btn-refresh" onClick={() => { setPagina(1); carregarPropostas(1) }} title="Atualizar lista">
+            ↻
           </button>
         </div>
 
@@ -197,17 +328,19 @@ export default function EsteiraProposta({ setPaginaAtual }) {
                 <th>Hist.</th>
                 <th>Status</th>
                 <th>Valor Liberado</th>
+                <th>Valor de Parcela</th>
                 <th>Banco</th>
                 <th>Operação</th>
                 <th>Convênio</th>
                 <th>Data da última atualização</th>
                 <th>Hora da última atualização</th>
+                <th>Há</th>
                 <th>Usuário digitador</th>
               </tr>
             </thead>
             <tbody>
               {propostas.map((item) => (
-                <tr key={item.id}>
+                <tr key={item.id} style={item.locked ? { fontWeight: 'bold' } : {}}>
                   <td style={{ textAlign: 'center' }}>
                     <span
                       style={{ cursor: 'pointer', color: '#000', fontWeight: 'bold' }}
@@ -225,25 +358,53 @@ export default function EsteiraProposta({ setPaginaAtual }) {
                   <td>
                     <span
                       className="status-tag"
-                      style={{ cursor: 'pointer', color: item.statusCor, fontWeight: 'bold' }}
+                      style={{ cursor: (item.proposta_status_id === 2 || ((item.status || '').toLowerCase() === 'integrado' && (localStorage.getItem('usuario_perfil_crmwa') || '') !== 'Administrador')) ? 'default' : 'pointer', color: item.statusCor, fontWeight: 'bold' }}
                       onClick={() => handleStatusClick(item)}
                     >
                       {item.status}
                     </span>
                   </td>
                   <td className="valor-cell">
-                    {item.valorLiberado?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {(item.valorLiberadoReal ?? item.valorLiberado)
+                      ? Number(item.valorLiberadoReal ?? item.valorLiberado).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                      : '-'}
+                  </td>
+                  <td className="valor-cell">
+                    {(item.parcelaReal ?? item.valorParcela)
+                      ? Number(item.parcelaReal ?? item.valorParcela).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                      : '-'}
                   </td>
                   <td>{item.banco}</td>
                   <td>{item.operacao}</td>
                   <td>{item.convenio}</td>
                   <td>{item.dataAtualizacao}</td>
                   <td>{item.horaAtualizacao}</td>
+                  <td>{item.tempoDecorrido}</td>
                   <td>{item.usuarioDigitador}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="paginacao" style={{ display: 'flex', justifyContent: 'center', gap: '10px', alignItems: 'center', marginTop: '10px' }}>
+          <button
+            className="btn-paginacao"
+            disabled={pagina <= 1}
+            onClick={() => setPagina(p => Math.max(1, p - 1))}
+            style={{ padding: '6px 14px', cursor: pagina <= 1 ? 'default' : 'pointer', opacity: pagina <= 1 ? 0.5 : 1 }}
+          >
+            Anterior
+          </button>
+          <span style={{ fontSize: '14px' }}>Página {pagina} de {totalPaginas}</span>
+          <button
+            className="btn-paginacao"
+            disabled={pagina >= totalPaginas}
+            onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
+            style={{ padding: '6px 14px', cursor: pagina >= totalPaginas ? 'default' : 'pointer', opacity: pagina >= totalPaginas ? 0.5 : 1 }}
+          >
+            Próximo
+          </button>
         </div>
       </div>
 

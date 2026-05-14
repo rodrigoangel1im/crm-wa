@@ -643,3 +643,110 @@
 .btn-salvar-lateral:hover {
   opacity: 0.9;
 }
+
+.btn-redigitar {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  width: 100%;
+  margin-top: 10px;
+  transition: opacity 0.2s;
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+
+.btn-redigitar:hover {
+  opacity: 0.9;
+}
+
+.tab-bar {
+  display: flex;
+  gap: 0;
+  margin-bottom: 0;
+}
+
+.tab-btn {
+  padding: 10px 30px;
+  border: 1px solid #ccc;
+  border-bottom: none;
+  background-color: #e8e8e8;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+  color: #555;
+  border-radius: 6px 6px 0 0;
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+
+.tab-btn.tab-ativa {
+  background-color: #ffffff;
+  color: #3f3b6c;
+  border-color: #aaa;
+  position: relative;
+  z-index: 1;
+}
+
+.tabela-documentos {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+
+.tabela-documentos th {
+  background-color: #3f3b6c;
+  color: white;
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 11px;
+}
+
+.tabela-documentos td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.tabela-documentos tr:hover td {
+  background-color: #f5f5f5;
+}
+
+.btn-visualizar {
+  display: inline-block;
+  padding: 4px 12px;
+  background-color: #3f3b6c;
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.btn-visualizar:hover {
+  opacity: 0.85;
+}
+
+.btn-anexar-tipo {
+  padding: 4px 12px;
+  background-color: #3f3b6c;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  height: 28px;
+  white-space: nowrap;
+}
+
+.btn-anexar-tipo:hover {
+  background-color: #2e2b55;
+}
+
+.btn-anexar-tipo:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
