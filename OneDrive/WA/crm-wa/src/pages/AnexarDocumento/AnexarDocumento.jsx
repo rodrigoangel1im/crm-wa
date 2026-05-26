@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import './AnexarDocumento.css'
 import ModalAnexarDocumento from './ModalAnexarDocumento'
+import LoadingBars from '../../components/LoadingBars/LoadingBars'
 import { supabase } from '../../lib/supabase'
 
 const TIPOS_DOCUMENTO = [
@@ -11,7 +12,7 @@ const TIPOS_DOCUMENTO = [
 ]
 
 const AnexarDocumento = ({ setPaginaAtual }) => {
-  const [proposta, setProposta] = useState(null)
+  const [propostaIds, setPropostaIds] = useState([])
   const [anexos, setAnexos] = useState({})
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
@@ -23,19 +24,20 @@ const AnexarDocumento = ({ setPaginaAtual }) => {
     const stored = localStorage.getItem('propostaAnexar_crmwa')
     if (stored) {
       const p = JSON.parse(stored)
-      setProposta(p)
-      carregarDocumentos(p.id)
+      const ids = Array.isArray(p.ids) ? p.ids : p.id ? [p.id] : []
+      setPropostaIds(ids)
+      if (ids.length > 0) carregarDocumentos(ids)
     } else {
       setLoading(false)
     }
   }, [])
 
-  async function carregarDocumentos(propostaId) {
+  async function carregarDocumentos(ids) {
     try {
       const { data, error } = await supabase
         .from('documento_proposta')
         .select('*')
-        .eq('proposta_id', propostaId)
+        .in('proposta_id', ids)
 
       if (error) throw error
 
@@ -68,7 +70,7 @@ const AnexarDocumento = ({ setPaginaAtual }) => {
   }
 
   const handleRemover = async (tipoDocumento) => {
-    if (!proposta) return
+    if (propostaIds.length === 0) return
     try {
       const docs = anexos[tipoDocumento] || []
       const paths = docs.map(d => d.storage_path)
@@ -80,7 +82,7 @@ const AnexarDocumento = ({ setPaginaAtual }) => {
       const { error } = await supabase
         .from('documento_proposta')
         .delete()
-        .eq('proposta_id', proposta.id)
+        .in('proposta_id', propostaIds)
         .eq('tipo_documento', tipoDocumento)
 
       if (error) throw error
@@ -100,24 +102,41 @@ const AnexarDocumento = ({ setPaginaAtual }) => {
     setPaginaAtual('adicionar-contrato')
   }
 
-  const handleFinalizar = () => {
+  const handleFinalizar = async () => {
+    try {
+      if (propostaIds.length > 0) {
+        for (const pid of propostaIds) {
+          const { data: docs, error } = await supabase
+            .from('documento_proposta')
+            .select('id')
+            .eq('proposta_id', pid)
+
+          if (error) throw error
+
+          if (!docs || docs.length === 0) {
+            await supabase.from('proposta').update({ proposta_status_id: 10 }).eq('id', pid)
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao finalizar:', err)
+    }
+
     localStorage.removeItem('propostaAnexar_crmwa')
     setPaginaAtual('esteira-proposta')
   }
 
   if (loading) {
-    return (
-      <div className="pageContainer">
-        <header className="mainHeader"><h1>Anexo de documentos</h1></header>
-        <main className="documentCard"><p style={{ textAlign: 'center', padding: '40px' }}>Carregando...</p></main>
-      </div>
-    )
+    return <LoadingBars />
   }
 
-  if (!proposta) {
+  if (propostaIds.length === 0) {
     return (
       <div className="pageContainer">
-        <header className="mainHeader"><h1>Anexo de documentos</h1></header>
+        <header className="mainHeader">
+          <h1>Anexo de documentos</h1>
+          <p className="header-subtitle">Descrição da página</p>
+        </header>
         <main className="documentCard">
           <p style={{ textAlign: 'center', padding: '40px' }}>Nenhuma proposta selecionada.</p>
           <div className="actionButtons">
@@ -130,13 +149,22 @@ const AnexarDocumento = ({ setPaginaAtual }) => {
 
   return (
     <div className="pageContainer">
-      <header className="mainHeader">
-        <h1>Anexo de documentos</h1>
-      </header>
+        <header className="mainHeader">
+          <h1>Anexo de documentos</h1>
+          <p className="header-subtitle">
+            {propostaIds.length > 1
+              ? `${propostaIds.length} propostas vinculadas — os documentos serão anexados a todas`
+              : `Proposta ${propostaIds[0]} — Anexo de documentos`}
+          </p>
+        </header>
 
       <main className="documentCard">
         <div className="cardInternalTitle">
-          <h2>Proposta: {proposta.numero || proposta.id} — Anexo de documentos</h2>
+          <h2>
+            {propostaIds.length > 1
+              ? `${propostaIds.length} propostas — Anexo de documentos`
+              : `Proposta ${propostaIds[0]} — Anexo de documentos`}
+          </h2>
         </div>
 
         <div className="docList">
@@ -193,7 +221,6 @@ const AnexarDocumento = ({ setPaginaAtual }) => {
           <button className="btnAction" onClick={handleFinalizar} disabled={uploading}>
             FINALIZAR
           </button>
-          <button className="btnAction" onClick={handleVoltar}>VOLTAR</button>
         </div>
       </main>
 
@@ -201,7 +228,7 @@ const AnexarDocumento = ({ setPaginaAtual }) => {
         key={documentoSelecionado?.id}
         isOpen={modalAnexarOpen}
         onClose={() => setModalAnexarOpen(false)}
-        propostaId={proposta.id}
+        propostaIds={propostaIds}
         tipoDocumento={documentoSelecionado?.id}
         tipoLabel={documentoSelecionado?.label}
         onAnexar={handleAnexarDocumento}

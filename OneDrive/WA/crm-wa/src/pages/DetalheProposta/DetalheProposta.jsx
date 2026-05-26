@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react'
+import LoadingBars from '../../components/LoadingBars/LoadingBars'
 import './DetalheProposta.css'
 import { IMaskInput } from 'react-imask'
 import ModalOrgao from '../../components/ModalOrgao/ModalOrgao'
@@ -303,24 +304,10 @@ export default function DetalheProposta({ setPaginaAtual }) {
     }
   }, [parcelasRefin, valorMargemAgregada])
 
-  async function carregarValoresReais(propostaId) {
-    try {
-      const { data, error } = await supabase
-        .from('proposta')
-        .select('valor_liberado_real, numero_parcelas_real, parcela_real')
-        .eq('id', propostaId)
-        .single()
-
-      if (error && error.code !== 'PGRST116') throw error
-
-      if (data) {
-        setValorRealLiberado(data.valor_liberado_real ? data.valor_liberado_real.toFixed(2).replace('.', ',') : '')
-        setNumeroParcelasReal(data.numero_parcelas_real?.toString() || '')
-        setParcelaReal(data.parcela_real ? data.parcela_real.toFixed(2).replace('.', ',') : '')
-      }
-    } catch (error) {
-      console.error('Erro ao carregar Valores Reais:', error)
-    }
+  async function carregarValoresReais() {
+    setValorRealLiberado('')
+    setNumeroParcelasReal('')
+    setParcelaReal('')
   }
 
   async function carregarDocumentos(propostaId) {
@@ -346,10 +333,8 @@ export default function DetalheProposta({ setPaginaAtual }) {
       const { error } = await supabase
         .from('proposta')
         .update({
-          valor_liberado_real: valorRealLiberado ? parseFloat(valorRealLiberado.replace(/[^\d,]/g, '').replace(',', '.')) : null,
           valor_liberado: valorRealLiberado ? parseFloat(valorRealLiberado.replace(/[^\d,]/g, '').replace(',', '.')) : undefined,
-          numero_parcelas_real: numeroParcelasReal ? parseInt(numeroParcelasReal) : null,
-          parcela_real: parcelaReal ? parseFloat(parcelaReal.replace(/[^\d,]/g, '').replace(',', '.')) : null,
+          numero_parcelas: numeroParcelasReal ? parseInt(numeroParcelasReal) : undefined,
           valor_parcela: parcelaReal ? parseFloat(parcelaReal.replace(/[^\d,]/g, '').replace(',', '.')) : undefined
         })
         .eq('id', proposta.id)
@@ -514,7 +499,7 @@ export default function DetalheProposta({ setPaginaAtual }) {
         if (ds.agregar_margem) setAgregarMargem(ds.agregar_margem ? 'sim' : '')
       }
 
-      await carregarValoresReais(propostaId)
+      await carregarValoresReais()
     } catch (error) {
       console.error('Erro ao carregar proposta:', error)
       setMensagem({ tipo: 'erro', texto: 'Erro ao carregar proposta: ' + error.message })
@@ -555,16 +540,7 @@ export default function DetalheProposta({ setPaginaAtual }) {
   }
 
   if (loadingData) {
-    return (
-      <div className="form-container">
-        <header className="form-header">
-          <h1>Detalhes da Proposta</h1>
-        </header>
-        <div className="form-content">
-          <p style={{ textAlign: 'center', padding: '50px' }}>Carregando dados da proposta...</p>
-        </div>
-      </div>
-    )
+    return <LoadingBars />
   }
 
   return (
@@ -572,6 +548,7 @@ export default function DetalheProposta({ setPaginaAtual }) {
       <div className="form-container">
         <header className="form-header">
           <h1>Detalhes da Proposta</h1>
+          <p className="header-subtitle">Descrição da página</p>
         </header>
 
         <div className="form-content">

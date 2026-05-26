@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import './ModalAnexarDocumento.css'
 import { supabase } from '../../lib/supabase'
 
-const ModalAnexarDocumento = ({ isOpen, onClose, propostaId, tipoDocumento, tipoLabel, onAnexar, anexosExistentes = [] }) => {
+const ModalAnexarDocumento = ({ isOpen, onClose, propostaIds, tipoDocumento, tipoLabel, onAnexar, anexosExistentes = [] }) => {
   const [selectedFile, setSelectedFile] = useState(null)
   const [itens, setItens] = useState([])
   const [uploading, setUploading] = useState(false)
@@ -41,7 +41,7 @@ const ModalAnexarDocumento = ({ isOpen, onClose, propostaId, tipoDocumento, tipo
     } else {
       try {
         await supabase.storage.from('documentos-proposta').remove([item.storage_path])
-        await supabase.from('documento_proposta').delete().eq('id', item.id)
+        await supabase.from('documento_proposta').delete().eq('storage_path', item.storage_path)
         setItens(prev => prev.filter(i => i.id !== item.id))
       } catch (err) {
         console.error('Erro ao remover:', err)
@@ -62,7 +62,7 @@ const ModalAnexarDocumento = ({ isOpen, onClose, propostaId, tipoDocumento, tipo
       const results = []
       for (const item of locais) {
         const ext = item.file.name.split('.').pop()
-        const storagePath = `${propostaId}/${tipoDocumento}/${Date.now()}_${Math.random().toString(36).slice(2, 6)}.${ext}`
+        const storagePath = `${propostaIds[0]}/${tipoDocumento}/${Date.now()}_${Math.random().toString(36).slice(2, 6)}.${ext}`
 
         const { error: uploadError } = await supabase.storage
           .from('documentos-proposta')
@@ -70,21 +70,22 @@ const ModalAnexarDocumento = ({ isOpen, onClose, propostaId, tipoDocumento, tipo
 
         if (uploadError) throw uploadError
 
+        const inserts = (propostaIds || []).map(pid => ({
+          proposta_id: pid,
+          tipo_documento: tipoDocumento,
+          nome_arquivo: item.nome_arquivo,
+          storage_path: storagePath,
+          tamanho_bytes: item.tamanho_bytes,
+          mime_type: item.file.type
+        }))
+
         const { data: inserted, error: insertError } = await supabase
           .from('documento_proposta')
-          .insert([{
-            proposta_id: propostaId,
-            tipo_documento: tipoDocumento,
-            nome_arquivo: item.nome_arquivo,
-            storage_path: storagePath,
-            tamanho_bytes: item.tamanho_bytes,
-            mime_type: item.file.type
-          }])
+          .insert(inserts)
           .select()
-          .single()
 
         if (insertError) throw insertError
-        results.push(inserted)
+        results.push(inserted?.[0] || inserted)
       }
 
       const atualizados = [...itens.filter(i => !i.__local), ...results]

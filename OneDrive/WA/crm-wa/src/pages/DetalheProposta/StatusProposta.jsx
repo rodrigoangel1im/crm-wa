@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react'
+import LoadingBars from '../../components/LoadingBars/LoadingBars'
 import './StatusProposta.css'
 import { IMaskInput } from 'react-imask'
 import ModalOrgao from '../../components/ModalOrgao/ModalOrgao'
@@ -83,6 +84,7 @@ export default function StatusProposta({ setPaginaAtual }) {
   const [taxaJuros, setTaxaJuros] = useState('')
   const [codigoTabela, setCodigoTabela] = useState('')
   const [codigoTabelaOriginal, setCodigoTabelaOriginal] = useState('')
+  const [naoTemCodigoTabela, setNaoTemCodigoTabela] = useState(false)
   const [tpsCorrigida, setTpsCorrigida] = useState('')
   const [descricao, setDescricao] = useState('')
 
@@ -116,6 +118,7 @@ export default function StatusProposta({ setPaginaAtual }) {
   const [listaStatus, setListaStatus] = useState([])
   const [adeBanco, setAdeBanco] = useState('')
   const [adeBancoOriginal, setAdeBancoOriginal] = useState('')
+  const [naoTemAde, setNaoTemAde] = useState(false)
   const [modalRedigitarAberto, setModalRedigitarAberto] = useState(false)
   const [bancoRedigitar, setBancoRedigitar] = useState('')
   const [modalRedigirSucesso, setModalRedigirSucesso] = useState(false)
@@ -392,33 +395,22 @@ export default function StatusProposta({ setPaginaAtual }) {
       .then(({ data }) => setDetalhesStatus(data || []))
   }, [propostaStatusId])
 
-  async function carregarValoresReais(propostaId) {
-    try {
-      const { data, error } = await supabase
-        .from('proposta')
-        .select('valor_liberado_real, numero_parcelas_real, parcela_real, proposta_status_id, detalhe_status_id')
-        .eq('id', propostaId)
-        .single()
-
-      if (error && error.code !== 'PGRST116') throw error
-
-      if (data) {
-        setValorRealLiberado(data.valor_liberado_real ? data.valor_liberado_real.toFixed(2).replace('.', ',') : '')
-        setNumeroParcelasReal(data.numero_parcelas_real?.toString() || '')
-        setParcelaReal(data.parcela_real ? data.parcela_real.toFixed(2).replace('.', ',') : '')
-        setDetalheStatusId(data.detalhe_status_id?.toString() || '')
-        if (data.proposta_status_id) {
-          setPropostaStatusId(String(data.proposta_status_id))
-          setPropostaStatusIdOriginal(String(data.proposta_status_id))
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao carregar Valores Reais:', error)
-    }
+  async function carregarValoresReais() {
+    setValorRealLiberado('')
+    setNumeroParcelasReal('')
+    setParcelaReal('')
   }
 
   const salvarValoresReais = async () => {
     try {
+      if (!codigoTabela && !naoTemCodigoTabela) {
+        setMensagem({ tipo: 'erro', texto: 'Informe o CÓDIGO DA TABELA ou marque "Não tem Código da Tabela".' })
+        return
+      }
+      if (!adeBanco && !naoTemAde) {
+        setMensagem({ tipo: 'erro', texto: 'Informe o ADE BANCO ou marque "Não tem ADE".' })
+        return
+      }
       const propostaStr = localStorage.getItem('propostaSelecionada_crmwa')
       if (!propostaStr) return
       const proposta = JSON.parse(propostaStr)
@@ -453,20 +445,37 @@ export default function StatusProposta({ setPaginaAtual }) {
       const { error } = await supabase
         .from('proposta')
         .update({
-          valor_liberado_real: valorRealLiberado ? parseFloat(valorRealLiberado.replace(/[^\d,]/g, '').replace(',', '.')) : null,
           valor_liberado: valorRealLiberado ? parseFloat(valorRealLiberado.replace(/[^\d,]/g, '').replace(',', '.')) : undefined,
-          numero_parcelas_real: numeroParcelasReal ? parseInt(numeroParcelasReal) : null,
-          parcela_real: parcelaReal ? parseFloat(parcelaReal.replace(/[^\d,]/g, '').replace(',', '.')) : null,
+          numero_parcelas: numeroParcelasReal ? parseInt(numeroParcelasReal) : undefined,
           valor_parcela: parcelaReal ? parseFloat(parcelaReal.replace(/[^\d,]/g, '').replace(',', '.')) : undefined,
           tps: tpsCorrigida ? parseFloat(tpsCorrigida.replace(/[^\d,]/g, '').replace(',', '.')) : undefined,
           codigo_tabela: codigoTabela || null,
           numero_proposta_banco: adeBanco || null,
           proposta_status_id: propostaStatusId ? parseInt(propostaStatusId) : null,
-          detalhe_status_id: detalheStatusId ? parseInt(detalheStatusId) : null,
           dados_simulacao: { ...existing, descricao_sidebar: descricao || null }
         })
         .eq('id', proposta.id)
       if (error) throw error
+
+      if (valorRealLiberado) {
+        const vl = parseFloat(valorRealLiberado.replace(/[^\d,]/g, '').replace(',', '.'))
+        if (vl > 0) {
+          const { data: parcelas } = await supabase
+            .from('proposta_parcela')
+            .select('id')
+            .eq('proposta_id', proposta.id)
+          if (parcelas && parcelas.length > 0) {
+            const trocoPorParcela = vl / parcelas.length
+            for (const p of parcelas) {
+              await supabase
+                .from('proposta_parcela')
+                .update({ troco: trocoPorParcela })
+                .eq('id', p.id)
+            }
+          }
+        }
+      }
+
       setPropostaStatusIdOriginal(propostaStatusId)
       if (tpsCorrigida) {
         setTps(tpsCorrigida)
@@ -596,8 +605,8 @@ export default function StatusProposta({ setPaginaAtual }) {
         setValorLiberado(proposta.valor_liberado.toFixed(2).replace('.', ','))
         setValorLiberadoRefin(proposta.valor_liberado.toFixed(2).replace('.', ','))
       }
-      if (proposta.codigo_tabela) { setCodigoTabela(proposta.codigo_tabela); setCodigoTabelaOriginal(proposta.codigo_tabela) }
-      if (proposta.numero_proposta_banco) { setAdeBanco(proposta.numero_proposta_banco); setAdeBancoOriginal(proposta.numero_proposta_banco) }
+      if (proposta.codigo_tabela) { setCodigoTabela(proposta.codigo_tabela); setCodigoTabelaOriginal(proposta.codigo_tabela) } else { setNaoTemCodigoTabela(true) }
+      if (proposta.numero_proposta_banco) { setAdeBanco(proposta.numero_proposta_banco); setAdeBancoOriginal(proposta.numero_proposta_banco) } else { setNaoTemAde(true) }
 
       if (parcelasDb && parcelasDb.length > 0) {
         const arr = parcelasDb.map(p => ({
@@ -640,7 +649,7 @@ export default function StatusProposta({ setPaginaAtual }) {
       if (proposta.proposta_status_id) { setPropostaStatusId(String(proposta.proposta_status_id)); setPropostaStatusIdOriginal(String(proposta.proposta_status_id)) }
       setDetalheStatusId('')
 
-      await carregarValoresReais(propostaId)
+      await carregarValoresReais()
     } catch (error) {
       console.error('Erro ao carregar proposta:', error)
       setMensagem({ tipo: 'erro', texto: 'Erro ao carregar proposta: ' + error.message })
@@ -835,16 +844,7 @@ export default function StatusProposta({ setPaginaAtual }) {
   }
 
   if (loadingData) {
-    return (
-      <div className="form-container">
-        <header className="form-header">
-          <h1>Status da Proposta</h1>
-        </header>
-        <div className="form-content">
-          <p style={{ textAlign: 'center', padding: '50px' }}>Carregando dados da proposta...</p>
-        </div>
-      </div>
-    )
+    return <LoadingBars />
   }
 
   return (
@@ -852,6 +852,7 @@ export default function StatusProposta({ setPaginaAtual }) {
       <div className="form-container">
         <header className="form-header">
           <h1>Status da Proposta</h1>
+          <p className="header-subtitle">Descrição da página</p>
         </header>
 
         <div className="main-layout">
@@ -865,7 +866,7 @@ export default function StatusProposta({ setPaginaAtual }) {
             </div>
 
             {abaAtiva === 'dados' && (
-            <>
+            <div className="dados-content">
               <section className="secao-container">
             <header className="secao-header">Operação</header>
             <div className="grid-row">
@@ -1358,7 +1359,7 @@ export default function StatusProposta({ setPaginaAtual }) {
             )}
               <button className="btn-main" onClick={() => setPaginaAtual('esteira-proposta')}>Voltar</button>
             </div>
-            </>
+            </div>
             )}
           {abaAtiva === 'documentos' && (
             <div className="documentos-tab">
@@ -1416,7 +1417,7 @@ export default function StatusProposta({ setPaginaAtual }) {
               </div>
             </section>
           </div>
-          )}
+            )}
           {abaAtiva === 'config' && (
             <div className="config-tab">
               <section className="secao-container">
@@ -1451,8 +1452,14 @@ export default function StatusProposta({ setPaginaAtual }) {
             </header>
             <div className="conteudo-lateral">
               <div className="campo-lateral">
-                <label>CÓDIGO DA TABELA DIGITADA:</label>
-                <input type="text" value={codigoTabela} onChange={(e) => setCodigoTabela(e.target.value)} className="input-estilizado" disabled={isReprovado || !!codigoTabelaOriginal} />
+                <label>CÓDIGO DA TABELA DIGITADA: <span className="required">*</span></label>
+                <div className="input-with-checkbox">
+                  <input type="text" value={codigoTabela} onChange={(e) => setCodigoTabela(e.target.value)} className="input-estilizado" disabled={isReprovado || !!codigoTabelaOriginal || naoTemCodigoTabela} />
+                  <label className="checkbox-label-lateral">
+                    <input type="checkbox" checked={naoTemCodigoTabela} onChange={(e) => { setNaoTemCodigoTabela(e.target.checked); if (e.target.checked) setCodigoTabela('') }} disabled={isReprovado || !!codigoTabelaOriginal} />
+                    Não tem Código da Tabela
+                  </label>
+                </div>
               </div>
               <div className="campo-lateral">
                 <label>VALOR REAL DA PARCELA:</label>
@@ -1502,8 +1509,14 @@ export default function StatusProposta({ setPaginaAtual }) {
               </div>
               )}
               <div className="campo-lateral">
-                <label>ADE BANCO:</label>
-                <input type="text" value={adeBanco} onChange={(e) => setAdeBanco(e.target.value)} className="input-estilizado" disabled={isReprovado || !!adeBancoOriginal} />
+                <label>ADE BANCO: <span className="required">*</span></label>
+                <div className="input-with-checkbox">
+                  <input type="text" value={adeBanco} onChange={(e) => setAdeBanco(e.target.value)} className="input-estilizado" disabled={isReprovado || !!adeBancoOriginal || naoTemAde} />
+                  <label className="checkbox-label-lateral">
+                    <input type="checkbox" checked={naoTemAde} onChange={(e) => { setNaoTemAde(e.target.checked); if (e.target.checked) setAdeBanco('') }} disabled={isReprovado || !!adeBancoOriginal} />
+                    Não tem ADE
+                  </label>
+                </div>
               </div>
               {lockError && <div className="lock-warning" style={{ color: '#d32f2f', fontSize: '13px', marginBottom: '8px', textAlign: 'center' }}>{lockError}</div>}
               <button className="btn-salvar-lateral" onClick={salvarValoresReais} disabled={!!lockError}>Salvar</button>

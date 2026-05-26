@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Home, FileText, Calculator, ClipboardList, User, LogOut, Settings } from 'lucide-react'
+import { Home, FileText, Calculator, ClipboardList, User, LogOut, Settings, DollarSign, Book } from 'lucide-react'
 import './Sidebar.css'
 
 export default function Sidebar({ paginaAtual, setPaginaAtual, collapsed, onToggleCollapse }) {
@@ -73,6 +73,13 @@ export default function Sidebar({ paginaAtual, setPaginaAtual, collapsed, onTogg
             <div className="submenu">
               <a
                 href="#"
+                className={paginaAtual === 'esteira-simulacoes' ? 'active' : ''}
+                onClick={(e) => { e.preventDefault(); setPaginaAtual('esteira-simulacoes') }}
+              >
+                <span className="nav-text">Simulações</span>
+              </a>
+              <a
+                href="#"
                 className={paginaAtual === 'esteira-proposta' ? 'active' : ''}
                 onClick={(e) => { e.preventDefault(); setPaginaAtual('esteira-proposta') }}
               >
@@ -89,6 +96,24 @@ export default function Sidebar({ paginaAtual, setPaginaAtual, collapsed, onTogg
           )}
         </div>
 
+        {!isVendedor && (
+          <a
+            href="#"
+            className={paginaAtual === 'financeiro' ? 'active' : ''}
+            onClick={(e) => { e.preventDefault(); setPaginaAtual('financeiro') }}
+          >
+            <DollarSign size={20} className="icon" />
+            <span className="nav-text">Financeiro</span>
+          </a>
+        )}
+        <a
+          href="#"
+          className={paginaAtual === 'base-conhecimento' ? 'active' : ''}
+          onClick={(e) => { e.preventDefault(); setPaginaAtual('base-conhecimento') }}
+        >
+          <Book size={20} className="icon" />
+          <span className="nav-text">Base de Conhecimento</span>
+        </a>
         {isAdmin && (
           <a
             href="#"

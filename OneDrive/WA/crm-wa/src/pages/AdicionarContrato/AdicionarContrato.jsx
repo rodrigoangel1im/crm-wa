@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react"
+﻿import React, { useState, useEffect, useRef } from "react"
 import "./AdicionarContrato.css"
 import { IMaskInput } from "react-imask"
 import ModalOrgao from "../../components/ModalOrgao/ModalOrgao"
@@ -81,22 +81,22 @@ export default function AdicionarContrato({ setPaginaAtual }) {
 
   useEffect(() => {
     const totalParcelas = parcelas.reduce((soma, p) => {
-      const val = parseFloat(p.valor?.toString().replace(/\./g, '').replace(',', '.')) || 0
+      const val = parseFloat(p.valor) || 0
       return soma + val
     }, 0)
-    const margem = parseFloat(margemAgregada?.toString().replace(/\./g, '').replace(',', '.')) || 0
-    const margemPort = agregarMargem === 'sim' ? (parseFloat(valorMargemAgregada?.toString().replace(/\./g, '').replace(',', '.')) || 0) : 0
+    const margem = parseFloat(margemAgregada) || 0
+    const margemPort = agregarMargem === 'sim' ? (parseFloat(valorMargemAgregada) || 0) : 0
     const total = totalParcelas + margem + margemPort
-    setValorParcelaFinal(total > 0 ? total.toFixed(2).replace('.', ',') : "")
+    setValorParcelaFinal(total > 0 ? total.toFixed(2) : "")
   }, [parcelas, margemAgregada, valorMargemAgregada, agregarMargem])
 
   useEffect(() => {
     if (parcelas.length >= 2 && unificarParcela !== "sim") {
       const totalTroco = parcelas.reduce((soma, p) => {
-        const val = parseFloat(p.troco?.toString().replace(/\./g, '').replace(',', '.')) || 0
+        const val = parseFloat(p.troco) || 0
         return soma + val
       }, 0)
-      setValorLiberado(totalTroco > 0 ? totalTroco.toFixed(2).replace('.', ',') : "")
+      setValorLiberado(totalTroco > 0 ? totalTroco.toFixed(2) : "")
     }
   }, [parcelas, unificarParcela])
 
@@ -119,6 +119,16 @@ export default function AdicionarContrato({ setPaginaAtual }) {
   const [formSubmitted, setFormSubmitted] = useState(false)
   const [modalErroAberto, setModalErroAberto] = useState(false)
   const [erroTexto, setErroTexto] = useState('')
+  const [modalAddRefin, setModalAddRefin] = useState(false)
+  const [addRefinStep, setAddRefinStep] = useState('ask')
+  const [addRefinValor, setAddRefinValor] = useState('')
+  const [addRefinLiberado, setAddRefinLiberado] = useState('')
+  const [addRefinPrazo, setAddRefinPrazo] = useState('')
+  const [addRefinTps, setAddRefinTps] = useState('')
+  const [addRefinSubmitting, setAddRefinSubmitting] = useState(false)
+  const dadosBancariosInseridoRef = useRef(null)
+  const matriculaIdRef = useRef(null)
+  const propostaStatusIdRef = useRef(null)
 
   useEffect(() => {
     async function carregarDados() {
@@ -411,9 +421,27 @@ export default function AdicionarContrato({ setPaginaAtual }) {
         return
       }
 
+      if ((String(tipoConvenio) === String(inssId) && matricula.length !== 10) ||
+          (String(tipoConvenio) === String(siapeServidorId) && matricula.length !== 7) ||
+          (String(tipoConvenio) === String(siapePensionistaId) && matricula.length !== 8)) {
+        setMensagem({ tipo: "erro", texto: "Matrícula com tamanho inválido para o convênio selecionado" })
+        setErroTexto("Matrícula com tamanho inválido para o convênio selecionado")
+        setModalErroAberto(true)
+        setSubmitting(false)
+        return
+      }
+
       if (!dataNascimento) {
         setMensagem({ tipo: "erro", texto: "Preencha a data de nascimento" })
         setErroTexto("Preencha a data de nascimento")
+        setModalErroAberto(true)
+        setSubmitting(false)
+        return
+      }
+
+      if (tipoConvenio === siapePensionistaId && matriculaInstituidor.length !== 7) {
+        setMensagem({ tipo: "erro", texto: "Preencha a matrícula do instituidor (7 dígitos)" })
+        setErroTexto("Preencha a matrícula do instituidor (7 dígitos)")
         setModalErroAberto(true)
         setSubmitting(false)
         return
@@ -435,6 +463,22 @@ export default function AdicionarContrato({ setPaginaAtual }) {
         return
       }
 
+      if (nomeCompleto.trim().split(/\s+/).length < 2) {
+        setMensagem({ tipo: "erro", texto: "Nome completo deve conter nome e sobrenome" })
+        setErroTexto("Nome completo deve conter nome e sobrenome")
+        setModalErroAberto(true)
+        setSubmitting(false)
+        return
+      }
+
+      if (nomeMae.trim().split(/\s+/).length < 2) {
+        setMensagem({ tipo: "erro", texto: "Nome da mãe deve conter nome e sobrenome" })
+        setErroTexto("Nome da mãe deve conter nome e sobrenome")
+        setModalErroAberto(true)
+        setSubmitting(false)
+        return
+      }
+
       if (ddd.replace(/\D/g, "").length !== 2) {
         setMensagem({ tipo: "erro", texto: "DDD deve ter 2 dígitos" })
         setErroTexto("DDD deve ter 2 dígitos")
@@ -446,6 +490,14 @@ export default function AdicionarContrato({ setPaginaAtual }) {
       if (telefone.replace(/\D/g, "").length !== 9) {
         setMensagem({ tipo: "erro", texto: "Telefone deve ter 9 dígitos" })
         setErroTexto("Telefone deve ter 9 dígitos")
+        setModalErroAberto(true)
+        setSubmitting(false)
+        return
+      }
+
+      if (email && !email.includes('@')) {
+        setMensagem({ tipo: "erro", texto: "Email deve conter @" })
+        setErroTexto("Email deve conter @")
         setModalErroAberto(true)
         setSubmitting(false)
         return
@@ -477,17 +529,59 @@ export default function AdicionarContrato({ setPaginaAtual }) {
           setSubmitting(false)
           return
         }
-        const temParcela = parcelas.some(p => p.valor)
-        if (!temParcela) {
-          setMensagem({ tipo: "erro", texto: "Adicione pelo menos uma parcela" })
-          setErroTexto("Adicione pelo menos uma parcela")
+
+        if (String(tipoProduto) === "3" && !margemAgregada) {
+          setMensagem({ tipo: "erro", texto: "Preencha a margem agregada" })
+          setErroTexto("Preencha a margem agregada")
+          setModalErroAberto(true)
+          setSubmitting(false)
+          return
+        }
+
+        const parcelasValidar = parcelas.filter(p => p.valor)
+        if (parcelasValidar.length === 0) {
+          setMensagem({ tipo: "erro", texto: "Adicione pelo menos uma parcela com valor" })
+          setErroTexto("Adicione pelo menos uma parcela com valor")
+          setModalErroAberto(true)
+          setSubmitting(false)
+          return
+        }
+
+        if (String(tipoOperacao) === "3") {
+          for (const p of parcelasValidar) {
+            if (!p.bancoOrigem || !p.numeroContratoOrigem || !p.saldoDevedor || !p.numero) {
+              setMensagem({ tipo: "erro", texto: "Preencha todos os campos de cada parcela (banco, contrato, saldo devedor, valor, parcelas restantes)" })
+              setErroTexto("Preencha todos os campos de cada parcela (banco, contrato, saldo devedor, valor, parcelas restantes)")
+              setModalErroAberto(true)
+              setSubmitting(false)
+              return
+            }
+          }
+        }
+
+        if (String(tipoOperacao) === "2") {
+          for (const p of parcelasValidar) {
+            if (!p.numero) {
+              setMensagem({ tipo: "erro", texto: "Preencha o número de parcelas restantes em cada parcela" })
+              setErroTexto("Preencha o número de parcelas restantes em cada parcela")
+              setModalErroAberto(true)
+              setSubmitting(false)
+              return
+            }
+          }
+
+        }
+
+        if (agregarMargem === 'sim' && !valorMargemAgregada) {
+          setMensagem({ tipo: "erro", texto: "Preencha o valor da margem agregada" })
+          setErroTexto("Preencha o valor da margem agregada")
           setModalErroAberto(true)
           setSubmitting(false)
           return
         }
       }
 
-      if (!dadosBancarios.banco || !dadosBancarios.agencia || !dadosBancarios.numeroConta || !dadosBancarios.digitoVerificador || !dadosBancarios.tipoConta) {
+      if (!dadosBancarios.banco || !dadosBancarios.agencia || dadosBancarios.agencia.length !== 4 || !dadosBancarios.numeroConta || !dadosBancarios.digitoVerificador || !dadosBancarios.tipoConta) {
         setMensagem({ tipo: "erro", texto: "Preencha todos os dados bancários" })
         setErroTexto("Preencha todos os dados bancários")
         setModalErroAberto(true)
@@ -580,6 +674,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
 
       if (matriculaExistente) {
         matriculaId = matriculaExistente.id
+        matriculaIdRef.current = matriculaId
       } else {
         const margem = typeof margemCliente === "string" 
           ? (parseFloat(margemCliente.replace(/\./g, "").replace(",", ".")) || 0)
@@ -601,6 +696,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
 
         if (erroMatricula) throw erroMatricula
         matriculaId = novaMatricula.id
+        matriculaIdRef.current = matriculaId
       }
 
         const { data: dadosBancariosInserido, error: erroDadosBancarios } = await supabase
@@ -617,11 +713,10 @@ export default function AdicionarContrato({ setPaginaAtual }) {
         .single()
 
       if (erroDadosBancarios) throw erroDadosBancarios
+      dadosBancariosInseridoRef.current = dadosBancariosInserido.id
 
       const parseValor = (val) => {
-        if (typeof val === "string") {
-          return parseFloat(val.replace(/\./g, "").replace(",", "."))
-        }
+        if (typeof val === "string") return parseFloat(val) || null
         return val || null
       }
 
@@ -661,6 +756,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
           .maybeSingle()
         if (primeiro) propostaStatusId = primeiro.id
       }
+      propostaStatusIdRef.current = propostaStatusId
 
       const parseNumero = (val) => {
         if (!val) return null
@@ -669,9 +765,8 @@ export default function AdicionarContrato({ setPaginaAtual }) {
 
       const tipoParcela = String(tipoOperacao) === "3" ? 'pre_portabilidade' : 'refin'
 
-      const isRefinanciamento = String(tipoOperacao) === "2"
       const parcelasComValor = parcelas.filter(p => p.valor)
-      const deveSepararPropostas = isRefinanciamento && unificarParcela !== "sim" && parcelasComValor.length > 0
+      const deveSepararPropostas = String(tipoOperacao) === "3"
 
       const dadosSimulacao = {}
 
@@ -698,13 +793,13 @@ export default function AdicionarContrato({ setPaginaAtual }) {
               tipo_operacao_id: parseInt(tipoOperacao),
               tipo_produto_id: parseInt(tipoProduto),
               usuario_digitador_id: usuarioDigitadorId,
-              proposta_status_id: propostaStatusId,
+          proposta_status_id: propostaStatusIdRef.current,
               valor_parcela: parseValor(p.valor),
               numero_parcelas: parseNumero(p.numero) || 1,
               taxa_juros: parseValor(taxaJuros),
               tps: parseValor(tps),
               seguro: seguro === "sim" ? 50.00 : 0,
-              valor_liberado: parseValor(valorLiberado)
+              valor_liberado: parseValor(p.saldoDevedor)
             }])
             .select()
             .single()
@@ -749,8 +844,12 @@ export default function AdicionarContrato({ setPaginaAtual }) {
             tipo_produto_id: parseInt(tipoProduto),
             usuario_digitador_id: usuarioDigitadorId,
             proposta_status_id: propostaStatusId,
-            valor_parcela: parseValor(valorParcela),
-            numero_parcelas: parseInt(prazo) || null,
+            valor_parcela: parcelas && parcelas.length > 0 && parcelas[0].valor
+              ? parcelas.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0)
+              : parseValor(valorParcela),
+            numero_parcelas: parcelas && parcelas.length > 0 && parcelas[0].numero
+              ? parcelas.reduce((s, p) => s + (parseInt(String(p.numero).replace(/[^\d]/g, '')) || 0), 0)
+              : parseInt(prazo) || null,
             taxa_juros: parseValor(taxaJuros),
             tps: parseValor(tps),
             seguro: seguro === "sim" ? 50.00 : 0,
@@ -762,7 +861,11 @@ export default function AdicionarContrato({ setPaginaAtual }) {
         if (erroProposta) throw erroProposta
 
         if (parcelas && parcelas.length > 0 && parcelas[0].valor) {
-          const parcelasInsert = parcelas.map((p, i) => ({
+          const parcelasComValor = parcelas.filter(p => p.valor)
+          const trocoPorParcela = unificarParcela === 'sim' && parcelasComValor.length > 0
+            ? parseValor(valorLiberado) / parcelasComValor.length
+            : null
+          const parcelasInsert = parcelasComValor.map((p, i) => ({
             proposta_id: propostaInserida.id,
             tipo: tipoParcela,
             indice: i,
@@ -771,7 +874,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
             prazo_restante: parseNumero(p.numero),
             banco_codigo: p.bancoOrigem || null,
             numero_contrato: p.numeroContratoOrigem || null,
-            troco: parseValor(p.troco)
+            troco: trocoPorParcela || parseValor(p.troco || valorLiberado)
           })).filter(p => p.valor !== null)
 
           if (parcelasInsert.length > 0) {
@@ -781,6 +884,18 @@ export default function AdicionarContrato({ setPaginaAtual }) {
 
             if (erroParcelas) throw erroParcelas
           }
+        } else if (parseValor(valorLiberado)) {
+          const { error: erroParcela } = await supabase
+            .from("proposta_parcela")
+            .insert([{
+              proposta_id: propostaInserida.id,
+              tipo: tipoParcela,
+              indice: 0,
+              valor: parseValor(valorParcela),
+              troco: parseValor(valorLiberado)
+            }])
+
+          if (erroParcela) throw erroParcela
         }
 
         if (Object.keys(dadosSimulacao).length > 0) {
@@ -796,21 +911,85 @@ export default function AdicionarContrato({ setPaginaAtual }) {
       }
 
       localStorage.setItem("propostaAnexar_crmwa", JSON.stringify({
-        id: todasPropostasIds[0],
+        ids: todasPropostasIds,
         numero: null
       }))
 
-      const mensagemTexto = todasPropostasIds.length > 1
-        ? `${todasPropostasIds.length} propostas cadastradas com sucesso! Agora anexe os documentos do cliente.`
-        : "Proposta cadastrada com sucesso! Agora anexe os documentos do cliente."
+      if (String(tipoOperacao) === "2") {
+        setAddRefinValor('')
+        setAddRefinLiberado('')
+        setAddRefinPrazo('')
+        setAddRefinStep('ask')
+        setModalAddRefin(true)
+      } else {
+        const mensagemTexto = todasPropostasIds.length > 1
+          ? `${todasPropostasIds.length} propostas cadastradas com sucesso! Agora anexe os documentos do cliente.`
+          : `Proposta ${todasPropostasIds[0]} cadastrada com sucesso! Agora anexe os documentos do cliente.`
 
-      setMensagemModal({ visivel: true, tipo: "sucesso", texto: mensagemTexto })
+        setMensagemModal({ visivel: true, tipo: "sucesso", texto: mensagemTexto })
+      }
 
     } catch (error) {
       console.error("Erro ao salvar proposta:", error)
-      setMensagem({ tipo: "erro", texto: "Erro ao salvar: " + error.message })
+      if (error.message && error.message.includes("chk_matricula_tamanho")) {
+        setMensagem({ tipo: "erro", texto: "Não foi possível cadastrar devido à quantidade de dígitos da matrícula" })
+      } else {
+        setMensagem({ tipo: "erro", texto: "Erro ao salvar: " + error.message })
+      }
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleAddRefinCadastrar() {
+    if (!addRefinValor || !addRefinLiberado || !addRefinPrazo) {
+      alert('Preencha todos os campos.')
+      return
+    }
+    const tpsValue = addRefinTps ? parseFloat(addRefinTps.replace(',', '.')) : 0
+    setAddRefinSubmitting(true)
+    try {
+      const usuarioDigitadorId = parseInt(localStorage.getItem('usuario_id_crmwa') || '0')
+      const novaProposta = await supabase
+        .from('proposta')
+        .insert([{
+          banco_credor_id: banco,
+          dados_bancarios_id: dadosBancariosInseridoRef.current,
+          matricula_id: matriculaIdRef.current,
+          tipo_operacao_id: parseInt(tipoOperacao),
+          tipo_produto_id: parseInt(tipoProduto),
+          usuario_digitador_id: usuarioDigitadorId,
+          proposta_status_id: propostaStatusIdRef.current,
+          valor_parcela: parseFloat(addRefinValor),
+          numero_parcelas: parseInt(addRefinPrazo),
+          taxa_juros: parseFloat(taxaJuros),
+          tps: tpsValue,
+          seguro: seguro === "sim" ? 50.00 : 0,
+          valor_liberado: parseFloat(addRefinLiberado)
+        }])
+        .select()
+        .single()
+
+      if (novaProposta.error) throw novaProposta.error
+
+      await supabase.from('proposta_parcela').insert([{
+        proposta_id: novaProposta.data.id,
+        tipo: 'refin',
+        indice: 0,
+        valor: parseFloat(addRefinValor),
+        troco: parseFloat(addRefinLiberado)
+      }])
+
+      setAddRefinValor('')
+      setAddRefinLiberado('')
+      setAddRefinPrazo('')
+      setAddRefinTps('')
+      setAddRefinStep('ask')
+    } catch (error) {
+      console.error('Erro ao cadastrar Refin:', error)
+      alert('Erro ao cadastrar: ' + error.message)
+    } finally {
+      setAddRefinSubmitting(false)
     }
   }
 
@@ -916,14 +1095,14 @@ export default function AdicionarContrato({ setPaginaAtual }) {
           <h1>Cadastro de Proposta</h1>
         </header>
 
-        <div className="form-content" onInput={() => formSubmitted && setFormSubmitted(false)}>
+        <div className="form-content">
           <section className="form-section">
             <div className="section-title">Operação</div>
             <div className="grid-row">
               <div className="field-group">
                 <label>BANCO:</label>
                 <div className="input-with-button">
-                  <select value={banco} onChange={(e) => { setBanco(e.target.value); setTipoOperacao(""); setTipoProduto(""); setTipoConvenio(""); setOrgao(""); limparDadosAposOperacao() }} required>
+                  <select value={banco} onChange={(e) => { setBanco(e.target.value); setTipoOperacao(""); setTipoProduto(""); setTipoConvenio(""); setOrgao(""); limparDadosAposOperacao() }} className={formSubmitted && !banco ? 'input-error' : ''} required>
                     <option value="">Selecione o banco</option>
                     {bancosDisponiveis.map((item) => (
                        <option key={item.id} value={item.id}>{item.nome}</option>
@@ -945,7 +1124,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                   value={tipoOperacao} 
                   onChange={(e) => { setTipoOperacao(e.target.value); setTipoProduto(""); setTipoConvenio(""); setOrgao(""); limparDadosAposOperacao() }} 
                   disabled={!banco}
-                 required>
+                 className={formSubmitted && !tipoOperacao ? 'input-error' : ''} required>
                   <option value="">Selecione o tipo de operação</option>
                   {operacoesPermitidas.length > 0 ? (
                     operacoesPermitidas.map((item) => (
@@ -958,7 +1137,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
               </div>
               <div className="field-group">
                 <label>TIPO DE PRODUTO:</label>
-                  <select value={tipoProduto} onChange={(e) => { setTipoProduto(e.target.value); setTipoConvenio(""); setOrgao(""); limparDadosAposOperacao() }} disabled={!tipoOperacao} required>
+                  <select value={tipoProduto} onChange={(e) => { setTipoProduto(e.target.value); setTipoConvenio(""); setOrgao(""); limparDadosAposOperacao() }} disabled={!tipoOperacao} className={formSubmitted && !tipoProduto ? 'input-error' : ''} required>
                   <option value="">Selecione o tipo do produto</option>
                   {tiposProduto
                     .filter((p) => String(p.tipo_operacao_id) === String(tipoOperacao))
@@ -972,7 +1151,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
               <div className="field-group">
                 <label>TIPO DE CONVÊNIO:</label>
                 <div className="input-with-button">
-                  <select value={tipoConvenio} onChange={(e) => { setTipoConvenio(e.target.value); setOrgao(""); limparDadosAposOperacao() }} disabled={!tipoProduto} required>
+                  <select value={tipoConvenio} onChange={(e) => { setTipoConvenio(e.target.value); setOrgao(""); limparDadosAposOperacao() }} disabled={!tipoProduto} className={formSubmitted && !tipoConvenio ? 'input-error' : ''} required>
                     <option value="">Selecione o convênio</option>
                     {conveniosPermitidos.length > 0 ? conveniosPermitidos.map((item) => (
                       <option key={item.id} value={item.id}>{item.nome}</option>
@@ -993,7 +1172,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
               <div className="field-group">
                 <label>ORGÃO:</label>
                 <div className="input-with-button">
-                  <select value={orgao} onChange={(e) => { setOrgao(e.target.value); limparDadosAposOperacao() }} disabled={!tipoConvenio} required>
+                  <select value={orgao} onChange={(e) => { setOrgao(e.target.value); limparDadosAposOperacao() }} disabled={!tipoConvenio} className={formSubmitted && !orgao ? 'input-error' : ''} required>
                     <option value="">Selecione o orgão</option>
                     {vinculosConvenio.map((item) => (
                       <option key={item.id} value={item.id}>{item.nome}</option>
@@ -1036,7 +1215,10 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                 {cpfValido === false && <span className="error-msg" style={{position: "absolute", bottom: "-16px", left: "0"}}>CPF inválido</span>}
               </div>
               <div className="field-group" style={{position: "relative"}}>
-                <label>MATRÍCULA:</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                  MATRÍCULA:
+                  {formSubmitted && !matricula && <span className="error-msg" style={{ fontSize: '11px', fontWeight: 'normal' }}>Obrigatório</span>}
+                </label>
                 <input
                   type="text"
                   placeholder="Digite a matrícula"
@@ -1058,7 +1240,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                       setMatriculaValida(null)
                     }
                   }}
-                  className={`${matriculaValida === false ? "input-error" : ""}`}
+                  className={`${matriculaValida === false || (formSubmitted && !matricula) ? "input-error" : ""}`}
                   disabled={!operacaoCompleta}
                  required/>
                 {matriculaValida === false && tipoConvenio === inssId && (
@@ -1093,7 +1275,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
               )}
               <div className="field-group">
                 <label>DATA DE NASCIMENTO:</label>
-                <input type="date" value={dataNascimento} onChange={(e) => setDataNascimento(e.target.value)} disabled={!operacaoCompleta}  required/>
+                <input type="date" value={dataNascimento} onChange={(e) => setDataNascimento(e.target.value)} disabled={!operacaoCompleta} className={formSubmitted && !dataNascimento ? 'input-error' : ''}  required/>
               </div>
             </div>
             <div style={{display: "flex", gap: "15px", width: "100%", alignItems: "flex-end"}}>
@@ -1124,20 +1306,24 @@ export default function AdicionarContrato({ setPaginaAtual }) {
             <div className="section-title">Dados Pessoais</div>
             <div className="grid-row">
               <div className="field-group full-width">
-                <label>NOME COMPLETO:</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                  NOME COMPLETO:
+                  {nomeCompleto && nomeCompleto.trim().split(/\s+/).length < 2 && <span className="error-msg" style={{ fontSize: '11px', fontWeight: 'normal' }}>Informe nome e sobrenome</span>}
+                </label>
                 <input
                   type="text"
                   placeholder="Digite o nome completo"
                   value={nomeCompleto}
-                  onChange={(e) => setNomeCompleto(e.target.value)}
+                  onChange={(e) => setNomeCompleto(e.target.value.toUpperCase())}
                   disabled={!dadosPessoaisSecaoPronta}
+                  className={`uppercase-input ${nomeCompleto && nomeCompleto.trim().split(/\s+/).length < 2 ? 'input-error' : ''}`}
                  required/>
               </div>
             </div>
             <div className="grid-row">
               <div className="field-group">
                 <label>SEXO:</label>
-                <select value={sexo} onChange={(e) => setSexo(e.target.value)} disabled={!cadastroPuxado} required>
+                <select value={sexo} onChange={(e) => setSexo(e.target.value)} disabled={!cadastroPuxado} className={formSubmitted && !sexo ? 'input-error' : ''} required>
                   <option value="">Selecione</option>
                   <option value="masculino">Masculino</option>
                   <option value="feminino">Feminino</option>
@@ -1152,11 +1338,12 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                   value={numDocumento}
                   onChange={(e) => setNumDocumento(e.target.value)}
                   disabled={!cadastroPuxado}
+                  className={formSubmitted && !numDocumento ? 'input-error' : ''}
                  required/>
               </div>
               <div className="field-group">
                 <label>CLIENTE ALFABETIZADO:</label>
-                <select value={alfabetizado} onChange={(e) => setAlfabetizado(e.target.value)} disabled={!cadastroPuxado} required>
+                <select value={alfabetizado} onChange={(e) => setAlfabetizado(e.target.value)} disabled={!cadastroPuxado} className={formSubmitted && !alfabetizado ? 'input-error' : ''} required>
                   <option value="">Selecione</option>
                   <option value="sim">Sim</option>
                   <option value="nao">Não</option>
@@ -1165,18 +1352,22 @@ export default function AdicionarContrato({ setPaginaAtual }) {
             </div>
             <div className="grid-row">
               <div className="field-group" style={{flex: 3}}>
-                <label>NOME DA MÃE:</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                  NOME DA MÃE:
+                  {nomeMae && nomeMae.trim().split(/\s+/).length < 2 && <span className="error-msg" style={{ fontSize: '11px', fontWeight: 'normal' }}>Informe nome e sobrenome</span>}
+                </label>
                 <input
                   type="text"
                   placeholder="Digite o nome da mãe"
                   value={nomeMae}
-                  onChange={(e) => setNomeMae(e.target.value)}
+                  onChange={(e) => setNomeMae(e.target.value.toUpperCase())}
                   disabled={!secoesAposClienteDesbloqueadas}
+                  className={`uppercase-input ${nomeMae && nomeMae.trim().split(/\s+/).length < 2 ? 'input-error' : ''}`}
                  required/>
               </div>
               <div className="field-group small">
                 <label>UF NAT:</label>
-                <select value={ufNaturalidade} onChange={(e) => setUfNaturalidade(e.target.value)} disabled={!secoesAposClienteDesbloqueadas} required>
+                <select value={ufNaturalidade} onChange={(e) => setUfNaturalidade(e.target.value)} disabled={!secoesAposClienteDesbloqueadas} className={formSubmitted && !ufNaturalidade ? 'input-error' : ''} required>
                   <option value="">UF</option>
                   <option>AC</option><option>AL</option><option>AP</option>
                   <option>AM</option><option>BA</option><option>CE</option>
@@ -1192,7 +1383,10 @@ export default function AdicionarContrato({ setPaginaAtual }) {
             </div>
             <div className="grid-row">
               <div className="field-group small" style={{ position: "relative" }}>
-                <label>DDD:</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                  DDD:
+                  {ddd && ddd.replace(/\D/g, "").length !== 2 && <span className="error-msg" style={{ fontSize: '11px', fontWeight: 'normal' }}>DDD deve ter 2 dígitos</span>}
+                </label>
                 <IMaskInput
                   mask="00"
                   value={ddd}
@@ -1201,10 +1395,12 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                   className={`imask-input ${ddd && ddd.replace(/\D/g, "").length !== 2 ? "input-error" : ""}`}
                   disabled={!cadastroPuxado}
                  required/>
-                {ddd && ddd.replace(/\D/g, "").length !== 2 && <span className="error-msg">DDD deve ter 2 dígitos</span>}
               </div>
               <div className="field-group" style={{ position: "relative" }}>
-                <label>TELEFONE:</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                  TELEFONE:
+                  {telefone && telefone.replace(/\D/g, "").length !== 9 && <span className="error-msg" style={{ fontSize: '11px', fontWeight: 'normal' }}>Telefone deve ter 9 dígitos</span>}
+                </label>
                 <IMaskInput
                   mask="00000-0000"
                   value={telefone}
@@ -1213,17 +1409,19 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                   className={`imask-input ${telefone && telefone.replace(/\D/g, "").length !== 9 ? "input-error" : ""}`}
                   disabled={!cadastroPuxado}
                  required/>
-                {telefone && telefone.replace(/\D/g, "").length !== 9 && <span className="error-msg">Telefone deve ter 9 dígitos</span>}
               </div>
               <div className="field-group">
-                <label>EMAIL:</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                  EMAIL:
+                  {email && !email.includes('@') && <span className="error-msg" style={{ fontSize: '11px', fontWeight: 'normal' }}>Email deve conter @</span>}
+                </label>
                 <input
                   type="email"
                   placeholder="email@exemplo.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={!cadastroPuxado}
-                 required/>
+                  className={`${formSubmitted && !email ? 'input-error' : ''} ${email && !email.includes('@') ? 'input-error' : ''}`} required/>
               </div>
             </div>
           </section>
@@ -1232,7 +1430,10 @@ export default function AdicionarContrato({ setPaginaAtual }) {
             <div className="section-title">Endereço</div>
             <div className="grid-row address-row-1">
               <div className="field-group xsmall">
-                <label>CEP:</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                  CEP:
+                  {formSubmitted && !cep && <span className="error-msg" style={{ fontSize: '11px', fontWeight: 'normal' }}>Obrigatório</span>}
+                </label>
                 <IMaskInput
                   mask="00000-000"
                   value={cep}
@@ -1246,38 +1447,50 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                 <button className="btn-cep" disabled={!secoesAposClienteDesbloqueadas} onClick={buscarCEP}>BUSCAR CEP</button>
               </div>
               <div className="field-group large">
-                <label>LOGRADOURO:</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                  LOGRADOURO:
+                  {formSubmitted && !logradouro && <span className="error-msg" style={{ fontSize: '11px', fontWeight: 'normal' }}>Obrigatório</span>}
+                </label>
                 <input
                   type="text"
                   placeholder="Rua, Avenida, etc."
                   value={logradouro}
                   onChange={(e) => setLogradouro(e.target.value)}
                   disabled={!secoesAposClienteDesbloqueadas}
-                 required/>
+                 className={formSubmitted && !logradouro ? 'input-error' : ''} required/>
               </div>
               <div className="field-group xsmall">
-                <label>NÚMERO:</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                  NÚMERO:
+                  {formSubmitted && !numero && <span className="error-msg" style={{ fontSize: '11px', fontWeight: 'normal' }}>Obrigatório</span>}
+                </label>
                 <input
                   type="text"
                   placeholder="000"
                   value={numero}
                   onChange={(e) => setNumero(e.target.value)}
                   disabled={!secoesAposClienteDesbloqueadas}
-                 required/>
+                 className={formSubmitted && !numero ? 'input-error' : ''} required/>
               </div>
               <div className="field-group">
-                <label>COMPLEMENTO:</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                  COMPLEMENTO:
+                  {formSubmitted && !complemento && <span className="error-msg" style={{ fontSize: '11px', fontWeight: 'normal' }}>Obrigatório</span>}
+                </label>
                 <input
                   type="text"
                   placeholder="Apto, Bloco, etc."
                   value={complemento}
                   onChange={(e) => setComplemento(e.target.value)}
                   disabled={!secoesAposClienteDesbloqueadas}
-                 required/>
+                 className={formSubmitted && !complemento ? 'input-error' : ''} required/>
               </div>
               <div className="field-group small">
-                <label>ESTADO:</label>
-                <select value={estado} onChange={(e) => setEstado(e.target.value)} disabled={!secoesAposClienteDesbloqueadas} required>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                  ESTADO:
+                  {formSubmitted && !estado && <span className="error-msg" style={{ fontSize: '11px', fontWeight: 'normal' }}>Obrigatório</span>}
+                </label>
+                <select value={estado} onChange={(e) => setEstado(e.target.value)} disabled={!secoesAposClienteDesbloqueadas} className={formSubmitted && !estado ? 'input-error' : ''} required>
                   <option value="">UF</option>
                   <option>AC</option><option>AL</option><option>AP</option>
                   <option>AM</option><option>BA</option><option>CE</option>
@@ -1293,24 +1506,30 @@ export default function AdicionarContrato({ setPaginaAtual }) {
             </div>
             <div className="grid-row">
               <div className="field-group">
-                <label>BAIRRO:</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                  BAIRRO:
+                  {formSubmitted && !bairro && <span className="error-msg" style={{ fontSize: '11px', fontWeight: 'normal' }}>Obrigatório</span>}
+                </label>
                 <input
                   type="text"
                   placeholder="Digite o bairro"
                   value={bairro}
                   onChange={(e) => setBairro(e.target.value)}
                   disabled={!secoesAposClienteDesbloqueadas}
-                 required/>
+                 className={formSubmitted && !bairro ? 'input-error' : ''} required/>
               </div>
               <div className="field-group">
-                <label>CIDADE:</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                  CIDADE:
+                  {formSubmitted && !cidade && <span className="error-msg" style={{ fontSize: '11px', fontWeight: 'normal' }}>Obrigatório</span>}
+                </label>
                 <input
                   type="text"
                   placeholder="Digite a cidade"
                   value={cidade}
                   onChange={(e) => setCidade(e.target.value)}
                   disabled={!secoesAposClienteDesbloqueadas}
-                 required/>
+                 className={formSubmitted && !cidade ? 'input-error' : ''} required/>
               </div>
             </div>
           </section>
@@ -1334,18 +1553,19 @@ export default function AdicionarContrato({ setPaginaAtual }) {
               <div className="grid-row">
                 <div className="field-group">
                   <label>VALOR DE PARCELA:</label>
-                  <IMaskInput
-                    mask={Number}
-                    value={valorParcela}
-                    onAccept={(value) => setValorParcela(value)}
-                    placeholder="R$ 0,00"
-                    className="imask-input"
-                    scale={2}
-                    radix=","
-                    prefix="R$ "
-                    thousandsSeparator="."
-                    disabled={!secoesAposClienteDesbloqueadas}
-                   required/>
+                            <IMaskInput
+                              mask={Number}
+                              value={valorParcela}
+                              onAccept={(value) => setValorParcela(value)}
+                              placeholder="R$ 0,00"
+                              className="imask-input"
+                              scale={2}
+                              radix=","
+                              prefix="R$ "
+                              thousandsSeparator="."
+                              disabled={!secoesAposClienteDesbloqueadas}
+                              unmask={true}
+                             required/>
                 </div>
                 <div className="field-group">
                   <label>TAXA DE JUROS:</label>
@@ -1360,12 +1580,14 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                     suffix="%"
                     thousandsSeparator="."
                     disabled={!secoesAposClienteDesbloqueadas}
+                    unmask={true}
                    required/>
                 </div>
                 <div className="field-group">
                   <label>PRAZO:</label>
-                  <select value={prazo} onChange={(e) => setPrazo(e.target.value)} disabled={!secoesAposClienteDesbloqueadas} required>
+                  <select value={prazo} onChange={(e) => setPrazo(e.target.value)} disabled={!secoesAposClienteDesbloqueadas} className={formSubmitted && !prazo ? 'input-error' : ''} required>
                     <option value="">Selecione</option>
+                    <option value="120">120</option>
                     <option value="108">108</option>
                     <option value="96">96</option>
                     <option value="84">84</option>
@@ -1380,37 +1602,39 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                   <IMaskInput
                              mask={Number}
                               value={valorLiberado}
-                              onAccept={(value) => {
-                                if (parcelas.length >= 2 && unificarParcela !== "sim") return
-                                setValorLiberado(value)
-                              }}
-                              placeholder="R$ 0,00"
-                              className="imask-input"
-                              scale={2}
-                              radix=","
-                              prefix="R$ "
-                              thousandsSeparator="."
-                              disabled={!secoesAposClienteDesbloqueadas}
-                             required/>
-                </div>
-                <div className="field-group">
-                  <label>TPS:</label>
+                    onAccept={(value) => {
+                                  setValorLiberado(value)
+                                }}
+                                placeholder="R$ 0,00"
+                                className="imask-input"
+                                scale={2}
+                                radix=","
+                                prefix="R$ "
+                                thousandsSeparator="."
+                                  disabled={!secoesAposClienteDesbloqueadas}
+                                  unmask={true}
+                                 required/>
+                  </div>
+                  <div className="field-group">
+
+                    <label>TPS:</label>
                   <IMaskInput
                     mask={Number}
                     value={tps}
                     onAccept={(value) => setTps(value)}
-                    placeholder="R$ 0,00"
-                    className="imask-input"
-                    scale={2}
-                    radix=","
-                    prefix="R$ "
-                    thousandsSeparator="."
-                    disabled={!secoesAposClienteDesbloqueadas}
-                   required/>
+                               placeholder="R$ 0,00"
+                               className="imask-input"
+                               scale={2}
+                               radix=","
+                               prefix="R$ "
+                               thousandsSeparator="."
+                               disabled={!secoesAposClienteDesbloqueadas}
+                               unmask={true}
+                              required/>
                 </div>
                 <div className="field-group">
                   <label>SEGURO:</label>
-                  <select value={seguro} onChange={(e) => setSeguro(e.target.value)} disabled={!secoesAposClienteDesbloqueadas} required>
+                  <select value={seguro} onChange={(e) => setSeguro(e.target.value)} disabled={!secoesAposClienteDesbloqueadas} className={formSubmitted && !seguro ? 'input-error' : ''} required>
                     <option value="">Selecione</option>
                     <option value="sim">Sim</option>
                     <option value="nao">Não</option>
@@ -1446,6 +1670,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                           prefix="R$ "
                           thousandsSeparator="."
                           disabled={!secoesAposClienteDesbloqueadas}
+                          unmask={true}
                          required/>
                       </div>
                       <div className="field-group" style={{flex: 1, minWidth: 0}}>
@@ -1465,27 +1690,6 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                           ))}
                         </select>
                       </div>
-                      {parcelas.length >= 2 && unificarParcela !== "sim" && (
-                        <div className="field-group" style={{flex: 1, minWidth: 0}}>
-                          <label>TROCO:</label>
-                          <IMaskInput
-                            mask={Number}
-                            value={parcela.troco}
-                            onAccept={(value) => {
-                              const novasParcelas = [...parcelas]
-                              novasParcelas[index].troco = value
-                              setParcelas(novasParcelas)
-                            }}
-                            placeholder="R$ 0,00"
-                            className="imask-input"
-                            scale={2}
-                            radix=","
-                            prefix="R$ "
-                            thousandsSeparator="."
-                            disabled={!secoesAposClienteDesbloqueadas}
-                          />
-                        </div>
-                      )}
                       {parcelas.length > 1 && (
                         <button 
                           type="button" 
@@ -1521,21 +1725,6 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                     >
                       Adicionar
                     </button>
-                    <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px'}}>
-                      <input
-                        type="checkbox"
-                        checked={unificarParcela === 'sim'}
-                        onChange={(e) => setUnificarParcela(e.target.checked ? 'sim' : '')}
-                        disabled={!secoesAposClienteDesbloqueadas}
-                        style={{
-                          width: '18px',
-                          height: '18px',
-                          cursor: 'pointer',
-                          accentColor: '#3f3b6c'
-                        }}
-                      />
-                      UNIFICAR PARCELA
-                    </label>
                   </div>
                 </div>
 
@@ -1543,11 +1732,11 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                     <div className="subsection-title">Operação</div>
                    <div className="grid-row">
                          <div className="field-group">
-                           <label>VALOR LIBERADO:</label>
-                           <IMaskInput
-                             mask={Number}
-                             value={valorLiberado}
-                             onAccept={(value) => setValorLiberado(value)}
+                          <label>VALOR LIBERADO:</label>
+                          <IMaskInput
+                            mask={Number}
+                            value={valorLiberado}
+                            onAccept={(value) => setValorLiberado(value)}
                              placeholder="R$ 0,00"
                              className="imask-input"
                              scale={2}
@@ -1555,19 +1744,21 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                              prefix="R$ "
                              thousandsSeparator="."
                               disabled={!secoesAposClienteDesbloqueadas}
+                              unmask={true}
                              required/>
-                         </div>
+                          </div>
 
-                        <div className="field-group">
-                          <label>PRAZO:</label>
-                          <select value={prazo} onChange={(e) => setPrazo(e.target.value)} disabled={!secoesAposClienteDesbloqueadas} required>
-                            <option value="">Selecione</option>
-                            <option value="108">108</option>
-                            <option value="96">96</option>
-                            <option value="84">84</option>
-                            <option value="72">72</option>
-                            <option value="60">60</option>
-                          </select>
+                          <div className="field-group">
+                             <label>PRAZO:</label>
+                           <select value={prazo} onChange={(e) => setPrazo(e.target.value)} disabled={!secoesAposClienteDesbloqueadas} className={formSubmitted && !prazo ? 'input-error' : ''} required>
+                             <option value="">Selecione</option>
+                             <option value="120">120</option>
+                             <option value="108">108</option>
+                             <option value="96">96</option>
+                             <option value="84">84</option>
+                             <option value="72">72</option>
+                             <option value="60">60</option>
+                           </select>
                         </div>
 
                         <div className="field-group">
@@ -1583,12 +1774,13 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                             prefix="R$ "
                             thousandsSeparator="."
                             disabled={!secoesAposClienteDesbloqueadas}
+                            unmask={true}
                            required/>
                         </div>
 
                         <div className="field-group">
                           <label>SEGURO:</label>
-                          <select value={seguro} onChange={(e) => setSeguro(e.target.value)} disabled={!secoesAposClienteDesbloqueadas} required>
+                          <select value={seguro} onChange={(e) => setSeguro(e.target.value)} disabled={!secoesAposClienteDesbloqueadas} className={formSubmitted && !seguro ? 'input-error' : ''} required>
                             <option value="">Selecione</option>
                             <option value="sim">Sim</option>
                             <option value="nao">Não</option>
@@ -1598,45 +1790,45 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                        {String(tipoProduto) === "3" && (
                          <div className="field-group">
                            <label>MARGEM AGREGADA:</label>
-                           <IMaskInput
-                             mask={Number}
-                             value={margemAgregada}
-                             onAccept={(value) => setMargemAgregada(value)}
-                             placeholder="R$ 0,00"
-                             className="imask-input"
-                             scale={2}
-                             radix=","
-                             prefix="R$ "
-                             thousandsSeparator="."
-                             disabled={!secoesAposClienteDesbloqueadas}
-                            required/>
-                         </div>
-                       )}
-
-                        {unificarParcela === 'sim' && (
-                          <div className="field-group">
-                            <label>VALOR FINAL DE PARCELA:</label>
                             <IMaskInput
                               mask={Number}
-                              value={valorParcelaFinal}
-                              onAccept={(value) => setValorParcelaFinal(value)}
+                              value={margemAgregada}
+                              onAccept={(value) => setMargemAgregada(value)}
                               placeholder="R$ 0,00"
                               className="imask-input"
                               scale={2}
                               radix=","
                               prefix="R$ "
                               thousandsSeparator="."
-                              disabled={true}
-                            />
-                          </div>
-                         )}
-                       </div>
-                     </div>
-                </div>
-                </section>
-            )}
+                              disabled={!secoesAposClienteDesbloqueadas}
+                              unmask={true}
+                             required/>
+                         </div>
+                       )}
 
-          {String(tipoOperacao) === "3" && (
+                           <div className="field-group">
+                             <label>VALOR FINAL DE PARCELA:</label>
+                             <IMaskInput
+                               mask={Number}
+                               value={valorParcelaFinal}
+                               onAccept={(value) => setValorParcelaFinal(value)}
+                               placeholder="R$ 0,00"
+                               className="imask-input"
+                               scale={2}
+                               radix=","
+                               prefix="R$ "
+                               thousandsSeparator="."
+                               disabled={!secoesAposClienteDesbloqueadas}
+                               unmask={true}
+                             />
+                           </div>
+                        </div>
+                      </div>
+                 </div>
+                 </section>
+             )}
+
+           {String(tipoOperacao) === "3" && (
             <section className={`form-section ${!enderecoCompleto ? "section-disabled" : ""}`}>
               <div className="section-title">Dados da Simulação</div>
               
@@ -1666,33 +1858,35 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                       </div>
                       <div className="field-group" style={{flex: 1, minWidth: 0}}>
                         <label>SALDO DEVEDOR:</label>
-                        <IMaskInput
-                          mask={Number}
-                          value={parcela.saldoDevedor}
-                          onAccept={(value) => { const n = [...parcelas]; n[index].saldoDevedor = value; setParcelas(n) }}
-                          placeholder="R$ 0,00"
-                          className="imask-input"
-                          scale={2}
-                          radix=","
-                          prefix="R$ "
-                          thousandsSeparator="."
-                          disabled={!secoesAposClienteDesbloqueadas}
-                         required/>
-                      </div>
+                            <IMaskInput
+                              mask={Number}
+                              value={parcela.saldoDevedor}
+                              onAccept={(value) => { const n = [...parcelas]; n[index].saldoDevedor = value; setParcelas(n) }}
+                              placeholder="R$ 0,00"
+                              className="imask-input"
+                              scale={2}
+                              radix=","
+                              prefix="R$ "
+                              thousandsSeparator="."
+                              disabled={!secoesAposClienteDesbloqueadas}
+                              unmask={true}
+                             required/>
+                       </div>
                       <div className="field-group" style={{flex: 1, minWidth: 0}}>
                         <label>VALOR DE PARCELA:</label>
                         <IMaskInput
-                          mask={Number}
-                          value={parcela.valor}
-                          onAccept={(value) => { const n = [...parcelas]; n[index].valor = value; setParcelas(n) }}
-                          placeholder="R$ 0,00"
-                          className="imask-input"
-                          scale={2}
-                          radix=","
-                          prefix="R$ "
-                          thousandsSeparator="."
-                          disabled={!secoesAposClienteDesbloqueadas}
-                         required/>
+                           mask={Number}
+                           value={parcela.valor}
+                           onAccept={(value) => { const n = [...parcelas]; n[index].valor = value; setParcelas(n) }}
+                           placeholder="R$ 0,00"
+                           className="imask-input"
+                           scale={2}
+                           radix=","
+                           prefix="R$ "
+                           thousandsSeparator="."
+                           disabled={!secoesAposClienteDesbloqueadas}
+                           unmask={true}
+                          required/>
                       </div>
                       <div className="field-group" style={{flex: 1, minWidth: 0}}>
                         <label>PARCELAS RESTANTES:</label>
@@ -1742,21 +1936,6 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                     >
                       Adicionar
                     </button>
-                    <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px'}}>
-                      <input
-                        type="checkbox"
-                        checked={unificarParcela === 'sim'}
-                        onChange={(e) => setUnificarParcela(e.target.checked ? 'sim' : '')}
-                        disabled={!secoesAposClienteDesbloqueadas}
-                        style={{
-                          width: '18px',
-                          height: '18px',
-                          cursor: 'pointer',
-                          accentColor: '#3f3b6c'
-                        }}
-                      />
-                      UNIFICAR PARCELA
-                    </label>
                     {String(tipoProduto) === "5" && (
                       <>
                     <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px'}}>
@@ -1776,19 +1955,20 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                     </label>
                     {agregarMargem === 'sim' && (
                       <div className="field-group" style={{marginBottom: 0}}>
-                        <label>VALOR DA MARGEM AGREGADA:</label>
+                   <label>VALOR DA MARGEM AGREGADA:</label>
                         <IMaskInput
-                          mask={Number}
-                          value={valorMargemAgregada}
-                          onAccept={(value) => setValorMargemAgregada(value)}
-                          placeholder="R$ 0,00"
-                          className="imask-input"
-                          scale={2}
-                          radix=","
-                          prefix="R$ "
-                          thousandsSeparator="."
-                          disabled={!secoesAposClienteDesbloqueadas}
-                         required/>
+                           mask={Number}
+                           value={valorMargemAgregada}
+                           onAccept={(value) => setValorMargemAgregada(value)}
+                           placeholder="R$ 0,00"
+                           className="imask-input"
+                           scale={2}
+                           radix=","
+                           prefix="R$ "
+                           thousandsSeparator="."
+                           disabled={!secoesAposClienteDesbloqueadas}
+                           unmask={true}
+                          required/>
                       </div>
                     )}
                       </>
@@ -1797,7 +1977,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                 </div>
 
                  <div style={{flex: 1}}>
-                   <div className="subsection-title">OPERAÇÃO</div>
+                   <div className="subsection-title">Operação</div>
                   <div className="grid-row">
                        <div className="field-group">
                          <label>VALOR LIBERADO:</label>
@@ -1805,30 +1985,32 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                            mask={Number}
                            value={valorLiberado}
                            onAccept={(value) => setValorLiberado(value)}
-                           placeholder="R$ 0,00"
-                           className="imask-input"
-                           scale={2}
-                           radix=","
-                           prefix="R$ "
-                           thousandsSeparator="."
-                           disabled={!secoesAposClienteDesbloqueadas}
-                          required/>
-                       </div>
+                            placeholder="R$ 0,00"
+                            className="imask-input"
+                            scale={2}
+                            radix=","
+                            prefix="R$ "
+                            thousandsSeparator="."
+                             disabled={!secoesAposClienteDesbloqueadas}
+                             unmask={true}
+                            required/>
+                         </div>
 
-                       <div className="field-group">
-                         <label>PRAZO:</label>
-                         <select value={prazo} onChange={(e) => setPrazo(e.target.value)} disabled={!secoesAposClienteDesbloqueadas} required>
-                           <option value="">Selecione</option>
-                           <option value="108">108</option>
-                           <option value="96">96</option>
-                           <option value="84">84</option>
-                           <option value="72">72</option>
-                           <option value="60">60</option>
-                         </select>
-                       </div>
+                         <div className="field-group">
+                            <label>PRAZO:</label>
+                          <select value={prazo} onChange={(e) => setPrazo(e.target.value)} disabled={!secoesAposClienteDesbloqueadas} className={formSubmitted && !prazo ? 'input-error' : ''} required>
+                            <option value="">Selecione</option>
+                            <option value="120">120</option>
+                            <option value="108">108</option>
+                            <option value="96">96</option>
+                            <option value="84">84</option>
+                            <option value="72">72</option>
+                            <option value="60">60</option>
+                          </select>
+                        </div>
 
-                       <div className="field-group">
-                         <label>TPS:</label>
+                        <div className="field-group">
+                          <label>TPS:</label>
                          <IMaskInput
                            mask={Number}
                            value={tps}
@@ -1837,69 +2019,70 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                            className="imask-input"
                            scale={2}
                            radix=","
-                           prefix="R$ "
-                           thousandsSeparator="."
-                           disabled={!secoesAposClienteDesbloqueadas}
-                          required/>
-                       </div>
-
-                       <div className="field-group">
-                         <label>SEGURO:</label>
-                          <select value={seguro} onChange={(e) => setSeguro(e.target.value)} disabled={!secoesAposClienteDesbloqueadas || (String(tipoOperacao) === "3" && String(tipoProduto) === "4")} required>
-                            <option value="">Selecione</option>
-                            <option value="sim">Sim</option>
-                            <option value="nao">Não</option>
-                          </select>
+                            prefix="R$ "
+                            thousandsSeparator="."
+                            disabled={!secoesAposClienteDesbloqueadas}
+                            unmask={true}
+                           required/>
                         </div>
 
-                       {String(tipoProduto) === "3" && (
-                         <div className="field-group">
-                           <label>MARGEM AGREGADA:</label>
-                           <IMaskInput
-                             mask={Number}
-                             value={margemAgregada}
-                             onAccept={(value) => setMargemAgregada(value)}
-                             placeholder="R$ 0,00"
-                             className="imask-input"
-                             scale={2}
-                             radix=","
-                             prefix="R$ "
-                             thousandsSeparator="."
-                             disabled={!secoesAposClienteDesbloqueadas}
-                            required/>
+                       <div className="field-group">
+                          <label>SEGURO:</label>
+                            <select value={seguro} onChange={(e) => setSeguro(e.target.value)} disabled={!secoesAposClienteDesbloqueadas || (String(tipoOperacao) === "3" && String(tipoProduto) === "4")} className={formSubmitted && !seguro ? 'input-error' : ''} required>
+                             <option value="">Selecione</option>
+                             <option value="sim">Sim</option>
+                             <option value="nao">Não</option>
+                           </select>
                          </div>
-                       )}
 
-                        {unificarParcela === 'sim' && (
+                        {String(tipoProduto) === "3" && (
                           <div className="field-group">
-                            <label>VALOR FINAL DE PARCELA:</label>
+                            <label>MARGEM AGREGADA:</label>
                             <IMaskInput
                               mask={Number}
-                              value={valorParcelaFinal}
-                              onAccept={(value) => setValorParcelaFinal(value)}
+                              value={margemAgregada}
+                              onAccept={(value) => setMargemAgregada(value)}
                               placeholder="R$ 0,00"
                               className="imask-input"
                               scale={2}
                               radix=","
                               prefix="R$ "
                               thousandsSeparator="."
-                              disabled={true}
-                            />
+                              disabled={!secoesAposClienteDesbloqueadas}
+                              unmask={true}
+                             required/>
                           </div>
-                         )}
-                       </div>
-                     </div>
-                </div>
-                </section>
-            )}
+                        )}
 
-          <section className={`form-section ${!enderecoCompleto ? "section-disabled" : ""}`}>
+                            <div className="field-group">
+                              <label>VALOR FINAL DE PARCELA:</label>
+                              <IMaskInput
+                                mask={Number}
+                                value={valorParcelaFinal}
+                                onAccept={(value) => setValorParcelaFinal(value)}
+                                placeholder="R$ 0,00"
+                                className="imask-input"
+                                scale={2}
+                                radix=","
+                                prefix="R$ "
+                                thousandsSeparator="."
+                                disabled={!secoesAposClienteDesbloqueadas}
+                                unmask={true}
+                              />
+                           </div>
+                        </div>
+                      </div>
+                 </div>
+                 </section>
+             )}
+
+           <section className={`form-section ${!enderecoCompleto ? "section-disabled" : ""}`}>
             <div className="section-title">Dados Bancários</div>
             <div className="grid-row">
               <div className="field-group">
                 <label>BANCO:</label>
                 <div className="input-with-button">
-                  <select value={dadosBancarios.banco} onChange={(e) => setDadosBancarios({ ...dadosBancarios, banco: e.target.value })} disabled={!cadastroPuxado} required>
+                  <select value={dadosBancarios.banco} onChange={(e) => setDadosBancarios({ ...dadosBancarios, banco: e.target.value })} disabled={!cadastroPuxado} className={formSubmitted && !dadosBancarios.banco ? 'input-error' : ''} required>
                     <option value="">Selecione o banco</option>
                     {bancosRecebimentoDisponiveis.map((item) => (
                        <option key={item.id} value={item.id}>{item.nome}</option>
@@ -1915,13 +2098,16 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                 onSelect={(id) => { setDadosBancarios({ ...dadosBancarios, banco: id }); setModalBancosRecebimentoAberto(false) }}
               />
               <div className="field-group">
-                <label>AGÊNCIA:</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                  AGÊNCIA:
+                  {formSubmitted && (!dadosBancarios.agencia || dadosBancarios.agencia.length !== 4) && <span className="error-msg" style={{ fontSize: '11px', fontWeight: 'normal' }}>Deve ter 4 dígitos</span>}
+                </label>
                 <IMaskInput
                   mask="0000"
                   value={dadosBancarios.agencia}
                   onAccept={(value) => setDadosBancarios({ ...dadosBancarios, agencia: value })}
                   placeholder="0000"
-                  className="imask-input"
+                  className={`imask-input ${formSubmitted && (!dadosBancarios.agencia || dadosBancarios.agencia.length !== 4) ? 'input-error' : ''}`}
                   disabled={!secoesAposClienteDesbloqueadas}
                  required/>
               </div>
@@ -1948,7 +2134,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
               </div>
               <div className="field-group">
                 <label>TIPO DE CONTA:</label>
-                <select value={dadosBancarios.tipoConta} onChange={(e) => setDadosBancarios({ ...dadosBancarios, tipoConta: e.target.value })} disabled={!cadastroPuxado} required>
+                <select value={dadosBancarios.tipoConta} onChange={(e) => setDadosBancarios({ ...dadosBancarios, tipoConta: e.target.value })} disabled={!cadastroPuxado} className={formSubmitted && !dadosBancarios.tipoConta ? 'input-error' : ''} required>
                   <option value="">Selecione</option>
                   <option value="corrente">Conta Corrente</option>
                   <option value="poupanca">Conta Poupança</option>
@@ -1996,7 +2182,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                       </tr>
                     ) : (
                       resultadosCliente.map((linha, idx) => (
-                        <tr key={idx} onClick={() => selecionarCliente(linha)} className="modal-table-row">
+                        <tr key={idx} className="modal-table-row" onClick={() => selecionarCliente(linha)} style={{ cursor: 'pointer' }}>
                           <td>{linha.cpf}</td>
                           <td>{linha.nomeCompleto}</td>
                           <td>{linha.numeroMatricula || "-"}</td>
@@ -2008,9 +2194,13 @@ export default function AdicionarContrato({ setPaginaAtual }) {
               </div>
               <div className="modal-footer">
                 <button className="btn-voltar-modal" onClick={() => setModalClienteAberto(false)}>FECHAR</button>
-                {resultadosCliente.length === 0 && (
+                {resultadosCliente.length === 0 ? (
                   <button className="btn-main" style={{ marginLeft: "10px" }} onClick={() => { setCadastroPuxado(true); setModalClienteAberto(false) }}>
                     CADASTRAR NOVO CLIENTE
+                  </button>
+                ) : (
+                  <button className="btn-main" style={{ marginLeft: "10px" }} onClick={() => { const cpfAtual = cpf; const cpfValidoAtual = validarCPF(cpfAtual); limparDadosAposOperacao(); setCpf(cpfAtual); setCpfValido(cpfValidoAtual); setCadastroPuxado(true) }}>
+                    ADICIONAR MATRÍCULA
                   </button>
                 )}
               </div>
@@ -2035,10 +2225,53 @@ export default function AdicionarContrato({ setPaginaAtual }) {
         </div>
       )}
 
+      {modalAddRefin && (
+        <div className="modal-overlay">
+          <div className="modal-container" style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2>{addRefinStep === 'ask' ? 'Cadastrar mais um Refinanciamento?' : 'Novo Refinanciamento'}</h2>
+            </div>
+            {addRefinStep === 'ask' ? (
+              <div className="modal-body" style={{ textAlign: 'center', padding: '30px 20px' }}>
+                <p style={{ fontSize: 15, color: '#333', marginBottom: 20 }}>Deseja cadastrar mais um Refinanciamento?</p>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 15 }}>
+                  <button className="btn-salvar" onClick={() => setAddRefinStep('form')}>Sim</button>
+                  <button className="btn-cancelar" onClick={() => { setModalAddRefin(false); setPaginaAtual('anexar-documento') }}>Não</button>
+                </div>
+              </div>
+            ) : (
+              <div className="modal-body" style={{ padding: '20px' }}>
+                <div className="field-group" style={{ marginBottom: 15 }}>
+                  <label>VALOR DE PARCELA:</label>
+                  <IMaskInput mask={Number} value={addRefinValor} onAccept={(v) => setAddRefinValor(v)} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." unmask={true} />
+                </div>
+                <div className="field-group" style={{ marginBottom: 15 }}>
+                  <label>VALOR LIBERADO:</label>
+                  <IMaskInput mask={Number} value={addRefinLiberado} onAccept={(v) => setAddRefinLiberado(v)} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." unmask={true} />
+                </div>
+                <div className="field-group" style={{ marginBottom: 15 }}>
+                  <label>PRAZO:</label>
+                  <IMaskInput mask={Number} value={addRefinPrazo} onAccept={(v) => setAddRefinPrazo(v)} placeholder="Meses" className="imask-input" />
+                </div>
+                <div className="field-group" style={{ marginBottom: 15 }}>
+                  <label>TPS:</label>
+                  <IMaskInput mask={Number} value={addRefinTps} onAccept={(v) => setAddRefinTps(v)} placeholder="0,00" className="imask-input" scale={2} radix="," thousandsSeparator="." />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+                  <button className="btn-cancelar" onClick={() => { setModalAddRefin(false); setPaginaAtual('anexar-documento') }}>Fechar</button>
+                  <button className="btn-salvar" onClick={handleAddRefinCadastrar} disabled={addRefinSubmitting}>
+                    {addRefinSubmitting ? 'CADASTRANDO...' : 'CADASTRAR'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {mensagemModal.visivel && (
         <div className="success-modal-overlay">
-          <div className="success-modal-content">
-            <div className="success-modal-icon">✓</div>
+          <div className={`success-modal-content ${mensagemModal.tipo === "sucesso" ? "modal-sucesso" : "modal-erro"}`}>
             <h3>{mensagemModal.tipo === "sucesso" ? "Sucesso!" : "Erro"}</h3>
             <p>{mensagemModal.texto}</p>
             <button className="success-modal-btn" onClick={() => {
@@ -2055,3 +2288,4 @@ export default function AdicionarContrato({ setPaginaAtual }) {
     </>
   )
 }
+
