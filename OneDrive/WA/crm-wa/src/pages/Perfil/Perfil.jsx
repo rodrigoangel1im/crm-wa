@@ -275,14 +275,37 @@ export default function Perfil() {
     }
   }
 
+  const [salvandoPermissao, setSalvandoPermissao] = useState(false)
+
   async function salvarPermissaoPerfil(perfil, recurso, permissao) {
+    if (salvandoPermissao) return
+    setSalvandoPermissao(true)
     try {
-      await supabase
+      const { data: existing } = await supabase
         .from('perfil_permissao')
-        .upsert({ perfil, recurso, permissao }, { onConflict: 'perfil, recurso' })
+        .select('id')
+        .eq('perfil', perfil)
+        .eq('recurso', recurso)
+        .maybeSingle()
+
+      if (existing) {
+        const { error } = await supabase
+          .from('perfil_permissao')
+          .update({ permissao })
+          .eq('id', existing.id)
+        if (error) throw error
+      } else {
+        const { error } = await supabase
+          .from('perfil_permissao')
+          .insert([{ perfil, recurso, permissao }])
+        if (error) throw error
+      }
+
       await carregarDados()
     } catch (err) {
       console.error('Erro ao salvar permissão de perfil:', err)
+    } finally {
+      setSalvandoPermissao(false)
     }
   }
 
