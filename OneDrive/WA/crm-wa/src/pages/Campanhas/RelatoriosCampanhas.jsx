@@ -6,6 +6,7 @@ export default function RelatoriosCampanhas() {
     <div className="campanhas-layout">
       <header className="page-header">
         <h1>Relatórios de Campanhas</h1>
+        <p className="header-subtitle">Descrição da página</p>
       </header>
       <main className="main-content">
         <div className="content-card">

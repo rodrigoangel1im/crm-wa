@@ -1,13 +1,5 @@
-.page-header {
-  background: #3f3b6c;
-  padding: 30px;
-  color: white;
-}
-
 .page-header h1 {
-  margin-left: 10%;
-  font-size: 24px;
-  font-weight: 600;
+  margin-left: -63% !important;
 }
 
 .main-content {
@@ -22,4 +14,66 @@
   min-height: 500px;
   border-radius: 10px;
   padding: 20px;
+}
+
+.cards-section {
+  margin-top: 24px;
+  margin-bottom: 32px;
+}
+
+.cards-grid {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.card-item {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 20px;
+  flex: 1;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.card-label {
+  font-size: 12px;
+  font-weight: bold;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.card-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: #333;
+}
+
+.card-analise {
+  border-top: 4px solid #f0c977;
+}
+
+.card-pagos {
+  border-top: 4px solid #27ae60;
+}
+
+.card-pendentes {
+  border-top: 4px solid #e67e22;
+}
+
+.card-reprovados {
+  border-top: 4px solid #e74c3c;
+}
+
+.card-meta {
+  border-top: 4px solid #3f3b6c;
+}
+
+.avisos-title-bar{
+  padding: 6px;
 }

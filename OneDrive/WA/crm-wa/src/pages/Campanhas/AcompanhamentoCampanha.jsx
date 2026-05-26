@@ -1,4 +1,5 @@
 import React from 'react'
+import LoadingBars from '../../components/LoadingBars/LoadingBars'
 import './AcompanhamentoCampanha.css'
 import { supabase } from '../../lib/supabase'
 import { useState, useEffect } from 'react'
@@ -156,16 +157,7 @@ export default function AcompanhamentoCampanha({ setPaginaAtual }) {
   }
 
   if (loading) {
-    return (
-      <div className="form-container">
-        <header className="form-header">
-          <h1>Acompanhamento de Campanha</h1>
-        </header>
-        <div className="form-content" style={{ width: '95%', maxWidth: '1500px' }}>
-          <p style={{ textAlign: 'center', padding: '50px' }}>Carregando lotes...</p>
-        </div>
-      </div>
-    )
+    return <LoadingBars />
   }
 
   return (

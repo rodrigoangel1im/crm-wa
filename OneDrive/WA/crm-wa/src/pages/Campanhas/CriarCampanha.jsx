@@ -148,6 +148,7 @@ export default function CriarCampanha() {
     <div className="form-container">
       <header className="form-header">
         <h1>Criar Campanha</h1>
+        <p className="header-subtitle">Descrição da página</p>
       </header>
 
       <div className="form-content">

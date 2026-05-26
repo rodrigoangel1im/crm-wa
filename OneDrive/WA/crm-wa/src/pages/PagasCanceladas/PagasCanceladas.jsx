@@ -1,3 +1,4 @@
+import LoadingBars from '../../components/LoadingBars/LoadingBars'
 import '../EsteiraProposta/EsteiraProposta.css'
 import { supabase } from '../../lib/supabase'
 import { useState, useEffect, useRef } from 'react'
@@ -263,22 +264,14 @@ export default function PagasCanceladas({ setPaginaAtual }) {
   }
 
   if (loading) {
-    return (
-      <div className="form-container">
-        <header className="form-header">
-          <h1>Pagas / Canceladas</h1>
-        </header>
-        <div className="form-content" style={{ width: '95%', maxWidth: '1500px' }}>
-          <p style={{ textAlign: 'center', padding: '50px' }}>Carregando propostas...</p>
-        </div>
-      </div>
-    )
+    return <LoadingBars />
   }
 
   return (
     <div className="form-container">
       <header className="form-header">
-        <h1>Pagas / Canceladas</h1>
+          <h1>Pagas / Canceladas</h1>
+          <p className="header-subtitle">Descrição da página</p>
       </header>
 
       <div className="form-content" style={{ width: '95%', maxWidth: '1500px' }}>

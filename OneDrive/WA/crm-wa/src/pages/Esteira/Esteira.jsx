@@ -6,6 +6,7 @@ export default function Esteira() {
     <div className="page-layout">
       <header className="page-header">
         <h1>Esteira de Contratos</h1>
+        <p className="header-subtitle">Descrição da página</p>
       </header>
       <main className="main-content">
         <div className="content-card">

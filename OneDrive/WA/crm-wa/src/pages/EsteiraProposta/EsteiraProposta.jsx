@@ -1,7 +1,16 @@
-﻿import './EsteiraProposta.css'
+﻿import LoadingBars from '../../components/LoadingBars/LoadingBars'
+import './EsteiraProposta.css'
 import { supabase } from '../../lib/supabase'
 import { useState, useEffect, useRef } from 'react'
 import ModalDetalheProposta from '../../components/ModalDetalheProposta/ModalDetalheProposta'
+import ModalAnexarDocumento from '../AnexarDocumento/ModalAnexarDocumento'
+
+const TIPOS_DOCUMENTO = [
+  { id: 'identidade', label: 'Documento de identidade' },
+  { id: 'comprovante_residencia', label: 'Comprovante de residência' },
+  { id: 'comprovante_renda', label: 'Contracheque' },
+  { id: 'extrato_inss', label: 'Extrato consignado - Hiscon INSS' },
+]
 
 export default function EsteiraProposta({ setPaginaAtual }) {
   const [propostas, setPropostas] = useState([])
@@ -17,6 +26,11 @@ export default function EsteiraProposta({ setPaginaAtual }) {
   }, [propostas])
   const [modalDetalheOpen, setModalDetalheOpen] = useState(false)
   const [modalDetalheId, setModalDetalheId] = useState(null)
+  const [modalDocOpen, setModalDocOpen] = useState(false)
+  const [modalDocProposta, setModalDocProposta] = useState(null)
+  const [docAnexos, setDocAnexos] = useState({})
+  const [docLoading, setDocLoading] = useState(false)
+  const [docUploadModal, setDocUploadModal] = useState({ open: false, tipo: null, label: '', propostaId: null })
 
   useEffect(() => {
     carregarPropostas(pagina)
@@ -87,9 +101,8 @@ export default function EsteiraProposta({ setPaginaAtual }) {
           usuario_digitador_id,
           usuario_digitador:usuario_digitador_id (nome),
           valor_liberado,
-          valor_liberado_real,
           valor_parcela,
-          parcela_real,
+
           atualizado_em,
           matricula (
             cliente (nome_completo, cpf),
@@ -195,9 +208,7 @@ export default function EsteiraProposta({ setPaginaAtual }) {
         statusCor: item.proposta_status?.cor || '#333',
         statusHistorico: item.proposta_status?.historico || '',
         valorLiberado: item.valor_liberado,
-        valorLiberadoReal: item.valor_liberado_real,
         valorParcela: item.valor_parcela,
-        parcelaReal: item.parcela_real,
         banco: item.banco_credor?.nome || 'N/A',
         operacao: item.tipo_operacao?.nome || 'N/A',
         convenio: item.matricula?.convenio?.nome || 'N/A',
@@ -242,8 +253,116 @@ export default function EsteiraProposta({ setPaginaAtual }) {
     if (item.proposta_status_id === 2) return
     if ((item.status || '').toLowerCase() === 'integrado' && perfil !== 'Administrador') return
     if (item.locked && !item.lockedByMe) return
+    if (item.proposta_status_id === 10) {
+      abrirModalDoc(item)
+      return
+    }
     localStorage.setItem('propostaSelecionada_crmwa', JSON.stringify(item))
     setPaginaAtual('status-proposta')
+  }
+
+  async function abrirModalDoc(item) {
+    setModalDocProposta(item)
+    setDocLoading(true)
+    setDocAnexos({})
+    setModalDocOpen(true)
+
+    const { data } = await supabase
+      .from('documento_proposta')
+      .select('id, tipo_documento, nome_arquivo')
+      .eq('proposta_id', item.id)
+
+    if (data) {
+      const anexosMap = {}
+      data.forEach(d => { anexosMap[d.tipo_documento] = d })
+      setDocAnexos(anexosMap)
+    }
+    setDocLoading(false)
+  }
+
+  async function handleFinalizarDoc() {
+    if (!modalDocProposta) return
+
+    const { data: statusList } = await supabase
+      .from('proposta_status')
+      .select('id, nome')
+
+    const aguardaDigitacao = statusList?.find(s => {
+      const nome = s.nome.toLowerCase()
+      return nome.includes('aguarda') && nome.includes('digita')
+    })
+
+    if (!aguardaDigitacao) {
+      alert('Status "Aguarda Digitação" não encontrado no sistema.')
+      return
+    }
+
+    const { data: propostaAtual } = await supabase
+      .from('proposta')
+      .select('valor_liberado')
+      .eq('id', modalDocProposta.id)
+      .single()
+
+    const { data: parcelasAtuais } = await supabase
+      .from('proposta_parcela')
+      .select('id, troco')
+      .eq('proposta_id', modalDocProposta.id)
+
+    if (propostaAtual?.valor_liberado && parcelasAtuais && parcelasAtuais.length > 0) {
+      const vl = Number(propostaAtual.valor_liberado) || 0
+      const trocoPorParcela = vl / parcelasAtuais.length
+      for (const p of parcelasAtuais) {
+        await supabase
+          .from('proposta_parcela')
+          .update({ troco: trocoPorParcela })
+          .eq('id', p.id)
+      }
+    }
+
+    const { error } = await supabase
+      .from('proposta')
+      .update({ proposta_status_id: aguardaDigitacao.id })
+      .eq('id', modalDocProposta.id)
+
+    if (error) {
+      console.error('Erro ao atualizar status:', error)
+      alert('Erro ao finalizar documentação.')
+      return
+    }
+
+    const nomeUsuario = localStorage.getItem('usuario_nome_crmwa') || ''
+    const docsAnexados = Object.values(docAnexos).map(d => d.tipo_documento).join(', ')
+    await supabase.from('proposta_historico').insert({
+      proposta_id: modalDocProposta.id,
+      dados: {
+        acao: `Documentação finalizada - Documentos anexados: ${docsAnexados}`,
+        usuario_nome: nomeUsuario,
+        proposta_status_id: aguardaDigitacao.id
+      }
+    })
+
+    setModalDocOpen(false)
+    setModalDocProposta(null)
+    setDocAnexos({})
+    carregarPropostas(pagina)
+  }
+
+  function handleAnexarDoc(tipo) {
+    const tipoInfo = TIPOS_DOCUMENTO.find(t => t.id === tipo)
+    setDocUploadModal({ open: true, tipo, label: tipoInfo?.label || '', propostaId: modalDocProposta?.id })
+  }
+
+  function handleDocUploadComplete(tipo, atualizados) {
+    if (atualizados && atualizados.length > 0) {
+      setDocAnexos(prev => {
+        const updated = { ...prev }
+        atualizados.forEach(doc => {
+          updated[doc.tipo_documento] = doc
+        })
+        return updated
+      })
+    }
+    setDocUploadModal({ open: false, tipo: null, label: '', propostaId: null })
   }
 
   const handleAdeWaClick = (item) => {
@@ -272,22 +391,14 @@ export default function EsteiraProposta({ setPaginaAtual }) {
   }
 
   if (loading) {
-    return (
-      <div className="form-container">
-        <header className="form-header">
-          <h1>Esteira de Proposta</h1>
-        </header>
-        <div className="form-content" style={{ width: '95%', maxWidth: '1500px' }}>
-          <p style={{ textAlign: 'center', padding: '50px' }}>Carregando propostas...</p>
-        </div>
-      </div>
-    )
+    return <LoadingBars />
   }
 
   return (
     <div className="form-container">
       <header className="form-header">
-        <h1>Esteira de Proposta</h1>
+          <h1>Esteira de Proposta</h1>
+          <p className="header-subtitle">Descrição da página</p>
       </header>
 
       <div className="form-content" style={{ width: '95%', maxWidth: '1500px' }}>
@@ -334,7 +445,7 @@ export default function EsteiraProposta({ setPaginaAtual }) {
                 <th>Convênio</th>
                 <th>Data da última atualização</th>
                 <th>Hora da última atualização</th>
-                <th>Há</th>
+                <th>Tempo</th>
                 <th>Usuário digitador</th>
               </tr>
             </thead>
@@ -365,13 +476,13 @@ export default function EsteiraProposta({ setPaginaAtual }) {
                     </span>
                   </td>
                   <td className="valor-cell">
-                    {(item.valorLiberadoReal ?? item.valorLiberado)
-                      ? Number(item.valorLiberadoReal ?? item.valorLiberado).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                    {item.valorLiberado
+                      ? Number(item.valorLiberado).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
                       : '-'}
                   </td>
                   <td className="valor-cell">
-                    {(item.parcelaReal ?? item.valorParcela)
-                      ? Number(item.parcelaReal ?? item.valorParcela).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                    {item.valorParcela
+                      ? Number(item.valorParcela).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
                       : '-'}
                   </td>
                   <td>{item.banco}</td>
@@ -412,6 +523,80 @@ export default function EsteiraProposta({ setPaginaAtual }) {
         isOpen={modalDetalheOpen}
         onClose={() => setModalDetalheOpen(false)}
         propostaId={modalDetalheId}
+      />
+
+      {modalDocOpen && modalDocProposta && !docUploadModal.open && (
+        <div className="modal-overlay">
+          <div className="modal-container" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Anexar Documentos - Proposta #{modalDocProposta.id}</h2>
+              <p>Cliente: {modalDocProposta.nomeCliente}</p>
+            </div>
+            <div className="modal-body">
+              {docLoading ? (
+                <LoadingBars />
+              ) : (
+                <div className="documentos-lista">
+                  {TIPOS_DOCUMENTO.map(tipo => {
+                    const anexado = !!docAnexos[tipo.id]
+                    return (
+                      <div
+                        key={tipo.id}
+                        className={`documento-item ${anexado ? 'documento-anexado' : ''}`}
+                        onClick={() => handleAnexarDoc(tipo.id)}
+                        style={{
+                          padding: '12px 16px',
+                          margin: '6px 0',
+                          border: `2px solid ${anexado ? '#28a745' : '#ddd'}`,
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          background: anexado ? '#f0fff4' : '#fff',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <span style={{ fontWeight: anexado ? 'bold' : 'normal' }}>
+                          {tipo.label}
+                        </span>
+                        <span style={{ color: anexado ? '#28a745' : '#999', fontSize: '13px' }}>
+                          {anexado ? '✓ ANEXADO' : 'Clique para anexar'}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px' }}>
+              <button
+                className="btn-cancelar"
+                onClick={() => { setModalDocOpen(false); setModalDocProposta(null); setDocAnexos({}) }}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn-salvar"
+                onClick={handleFinalizarDoc}
+                disabled={Object.keys(docAnexos).length === 0}
+                style={{ opacity: Object.keys(docAnexos).length === 0 ? 0.5 : 1 }}
+              >
+                FINALIZAR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ModalAnexarDocumento
+        isOpen={docUploadModal.open}
+        onClose={() => setDocUploadModal({ open: false, tipo: null, label: '', propostaId: null })}
+        propostaId={docUploadModal.propostaId}
+        tipoDocumento={docUploadModal.tipo}
+        tipoLabel={docUploadModal.label}
+        anexosExistentes={docUploadModal.tipo ? (docAnexos[docUploadModal.tipo] ? [docAnexos[docUploadModal.tipo]] : []) : []}
+        onAnexar={(tipo, atualizados) => handleDocUploadComplete(tipo, atualizados)}
       />
     </div>
   )

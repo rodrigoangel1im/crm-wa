@@ -4,18 +4,8 @@
   align-items: center;
 }
 
-.form-header {
-  background: #3f3b6c;
-  padding: 30px;
-  color: white;
-  width: 100%;
-  box-sizing: border-box;
-}
-
 .form-header h1 {
-  margin-left: 10%;
-  font-size: 24px;
-  font-weight: 600;
+  margin-left: -40%;
 }
 
 .form-content {

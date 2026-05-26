@@ -1,24 +1,110 @@
-.page-layout {
-  padding: 20px;
+.simulacao-tipos-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 4px;
 }
 
-.page-header {
-  margin-bottom: 20px;
+.simulacao-tipo-bloco {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px;
 }
 
-.page-header h1 {
-  color: #3f3b6c;
-  font-size: 24px;
-  font-weight: bold;
+.simulacao-tipo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.main-content {
-  width: 100%;
+.simulacao-tipo-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
 }
 
-.content-card {
+.simulacao-tipo-vazio {
+  color: #94a3b8;
+  font-style: italic;
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+
+.simulacao-arquivos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.simulacao-arquivo-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
   background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.simulacao-arquivo-item:hover {
+  background: #f1f5f9;
+}
+
+.simulacao-arquivo-nome {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.simulacao-arquivo-tamanho {
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.simulacao-arquivo-remover {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  border: none;
+  background: none;
+  color: #94a3b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.simulacao-arquivo-remover:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.required-asterisk {
+  color: #dc2626;
+  margin-left: 2px;
+}
+
+.field-group input:disabled,
+.field-group select:disabled,
+.field-group .imask-input[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #e5e7eb;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
 }

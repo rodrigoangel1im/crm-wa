@@ -13,24 +13,8 @@
   opacity: 0.6;
 }
 
-.form-header {
-  background-color: #3f3b6c;
-  width: 100%;
-  padding: 30px 0;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  flex-wrap: wrap;
-  text-align: center;
-}
-
 .form-header h1 {
-  color: white;
-  font-size: 32px;
-  font-weight: normal;
-  margin: 0;
+  margin-left: -40%;
 }
 
 .main-layout {
@@ -45,7 +29,7 @@
 .form-principal {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 0px;
 }
 
 .secao-container {
@@ -53,6 +37,10 @@
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.dados-content .secao-container {
+  max-width: 800px;
 }
 
 .secao-header {
@@ -587,6 +575,32 @@
   border-radius: 0 0 8px 8px;
 }
 
+.required {
+  color: #d32f2f;
+}
+
+.input-with-checkbox {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.checkbox-label-lateral {
+  display: flex !important;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px !important;
+  font-weight: normal !important;
+  cursor: pointer;
+  margin-bottom: 0 !important;
+}
+
+.checkbox-label-lateral input[type="checkbox"] {
+  width: auto !important;
+  height: auto !important;
+  cursor: pointer;
+}
+
 .campo-lateral {
   margin-bottom: 15px;
 }
@@ -666,6 +680,12 @@
   display: flex;
   gap: 0;
   margin-bottom: 0;
+}
+
+.documentos-tab {
+  padding: 0px;
+  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .tab-btn {
@@ -749,4 +769,10 @@
 .btn-anexar-tipo:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+.config-tab {
+  width: 100%;
+  padding: 0px;
+  margin: -14px 0 -1px -20px;
 }

@@ -14,17 +14,23 @@
 }
 
 .form-header {
-  background-color: #3f3b6c;
-  width: 100%;
-  padding: 30px 0;
-  text-align: center;
-  margin-bottom: 20px;
+  background: #3f3b6c !important;
+  padding: 25px 50px !important;
+  margin: -20px -20px 20px !important;
+  text-align: center !important;
 }
 
 .form-header h1 {
-  color: white;
-  font-size: 32px;
-  font-weight: normal;
+  color: #ffffff !important;
+  font-size: 24px !important;
+  font-weight: 600 !important;
+  margin: 0 0 2px !important;
+}
+
+.form-header .header-subtitle {
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-size: 13px !important;
+  margin: 0 !important;
 }
 
 .form-content {

@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Building2, ArrowLeftRight, Handshake, Plus, Save, Settings, Power, PowerOff, Pencil } from 'lucide-react'
+import { Building2, ArrowLeftRight, Handshake, Package, UserPlus, Plus, Save, Power, PowerOff, Pencil, Trash2 } from 'lucide-react'
 import './ConfiguracoesSistema.css'
+import LoadingBars from '../../components/LoadingBars/LoadingBars'
 
 const TABS = [
   { id: 'bancos', label: 'Bancos', icon: Building2 },
-  { id: 'em breve', label: 'Em breve...', icon: Settings, disabled: true },
+  { id: 'produtos', label: 'Produtos', icon: Package },
+  { id: 'convenios', label: 'Convênios', icon: Handshake },
+  { id: 'promotora', label: 'Promotoras', icon: UserPlus },
 ]
 
 export default function ConfiguracoesSistema() {
@@ -13,6 +16,7 @@ export default function ConfiguracoesSistema() {
   const [bancos, setBancos] = useState([])
   const [operacoes, setOperacoes] = useState([])
   const [convenios, setConvenios] = useState([])
+  const [promotoras, setPromotoras] = useState([])
   const [loading, setLoading] = useState(true)
 
   const [bancoId, setBancoId] = useState(null)
@@ -24,30 +28,34 @@ export default function ConfiguracoesSistema() {
   const [modalAberto, setModalAberto] = useState(false)
   const [modalForm, setModalForm] = useState({ nome: '', codigo: '' })
   const [modalErro, setModalErro] = useState('')
-  const [editandoBanco, setEditandoBanco] = useState(null)
+  const [editandoId, setEditandoId] = useState(null)
+  const [modalTipo, setModalTipo] = useState('banco')
 
   useEffect(() => {
     carregarDados()
   }, [])
 
   useEffect(() => {
-    if (bancoId) carregarVinculos()
-  }, [bancoId])
+    if (tabAtiva === 'bancos' && bancoId) carregarVinculos()
+  }, [bancoId, tabAtiva])
 
   async function carregarDados() {
     setLoading(true)
     try {
-      const [bancosRes, operacoesRes, conveniosRes] = await Promise.all([
+      const [bancosRes, operacoesRes, conveniosRes, promotorasRes] = await Promise.all([
         supabase.from('banco_operacao').select('*').order('nome'),
         supabase.from('tipo_operacao').select('*').order('nome'),
-        supabase.from('convenio').select('*').eq('ativo', true).order('nome'),
+        supabase.from('convenio').select('*').order('nome'),
+        supabase.from('promotora').select('*').order('nome'),
       ])
       if (bancosRes.error) throw bancosRes.error
       if (operacoesRes.error) throw operacoesRes.error
       if (conveniosRes.error) throw conveniosRes.error
+      if (promotorasRes.error) throw promotorasRes.error
       setBancos(bancosRes.data || [])
       setOperacoes(operacoesRes.data || [])
       setConvenios(conveniosRes.data || [])
+      setPromotoras(promotorasRes.data || [])
     } catch (err) {
       console.error('Erro ao carregar:', err)
     } finally {
@@ -75,52 +83,51 @@ export default function ConfiguracoesSistema() {
     )
   }
 
-  function abrirModalNovo() {
-    setEditandoBanco(null)
+  function abrirModal(tipo, item) {
+    setModalTipo(tipo)
+    setEditandoId(item?.id || null)
+    setModalForm({ nome: item?.nome || '', codigo: item?.codigo || '' })
+    setModalErro('')
+    setModalAberto(true)
+  }
+
+  function fecharModal() {
+    setModalAberto(false)
+    setEditandoId(null)
     setModalForm({ nome: '', codigo: '' })
     setModalErro('')
-    setModalAberto(true)
   }
 
-  function abrirModalEditar(b) {
-    setEditandoBanco(b)
-    setModalForm({ nome: b.nome || '', codigo: b.codigo || '' })
-    setModalErro('')
-    setModalAberto(true)
-  }
-
-  async function salvarBanco() {
+  async function salvarItem() {
     if (!modalForm.nome.trim()) {
       setModalErro('Nome é obrigatório')
       return
     }
     try {
-      if (editandoBanco) {
-        const { error } = await supabase
-          .from('banco_operacao')
-          .update({ nome: modalForm.nome.trim(), codigo: modalForm.codigo })
-          .eq('id', editandoBanco.id)
+      const payload = { nome: modalForm.nome.trim() }
+      if (modalTipo === 'banco') payload.codigo = modalForm.codigo
+
+      if (editandoId) {
+        const table = modalTipo === 'banco' ? 'banco_operacao' : modalTipo === 'produto' ? 'tipo_operacao' : modalTipo === 'promotora' ? 'promotora' : 'convenio'
+        const { error } = await supabase.from(table).update(payload).eq('id', editandoId)
         if (error) throw error
       } else {
-        const { error } = await supabase
-          .from('banco_operacao')
-          .insert([{ nome: modalForm.nome.trim(), codigo: modalForm.codigo }])
+        const table = modalTipo === 'banco' ? 'banco_operacao' : modalTipo === 'produto' ? 'tipo_operacao' : modalTipo === 'promotora' ? 'promotora' : 'convenio'
+        const { error } = await supabase.from(table).insert([payload])
         if (error) throw error
       }
-      setModalAberto(false)
-      setModalForm({ nome: '', codigo: '' })
-      setModalErro('')
+      fecharModal()
       await carregarDados()
     } catch (err) {
       setModalErro(err.message)
     }
   }
 
-  async function toggleAtivo(b, e) {
-    e.stopPropagation()
+  async function toggleAtivo(item, tipo) {
     try {
-      await supabase.from('banco_operacao').update({ ativo: !b.ativo }).eq('id', b.id)
-      if (bancoId === b.id && b.ativo) {
+      const table = tipo === 'convenio' ? 'convenio' : tipo === 'promotora' ? 'promotora' : tipo === 'produto' ? 'tipo_operacao' : 'banco_operacao'
+      await supabase.from(table).update({ ativo: !item.ativo }).eq('id', item.id)
+      if (tipo === 'banco' && bancoId === item.id && item.ativo) {
         setBancoId(null)
       }
       await carregarDados()
@@ -129,13 +136,23 @@ export default function ConfiguracoesSistema() {
     }
   }
 
-  async function salvar() {
+  async function excluirItem(id, tipo) {
+    if (!confirm('Tem certeza que deseja excluir este item?')) return
+    try {
+      const table = tipo === 'produto' ? 'tipo_operacao' : tipo === 'promotora' ? 'promotora' : 'convenio'
+      await supabase.from(table).delete().eq('id', id)
+      await carregarDados()
+    } catch (err) {
+      console.error('Erro ao excluir:', err)
+    }
+  }
+
+  async function salvarVinculos() {
     if (!bancoId) return
     setSalvando(true)
     setMensagem('')
     try {
       const bid = bancoId
-
       await supabase.from('banco_tipo_operacao').delete().eq('banco_id', bid)
       if (operacoesIds.length > 0) {
         const { error } = await supabase.from('banco_tipo_operacao').insert(
@@ -143,7 +160,6 @@ export default function ConfiguracoesSistema() {
         )
         if (error) throw error
       }
-
       await supabase.from('banco_convenio').delete().eq('banco_id', bid)
       if (conveniosIds.length > 0) {
         const { error } = await supabase.from('banco_convenio').insert(
@@ -151,7 +167,6 @@ export default function ConfiguracoesSistema() {
         )
         if (error) throw error
       }
-
       setMensagem('ok')
     } catch (err) {
       setMensagem('erro: ' + err.message)
@@ -162,12 +177,66 @@ export default function ConfiguracoesSistema() {
 
   const bancoAtual = bancos.find(b => b.id === bancoId)
 
+  function renderListaSimples(items, tipo, IconComponent) {
+    return (
+      <div className="config-dual" style={{ minHeight: 400 }}>
+        <aside className="config-dual-sidebar" style={{ borderRight: 'none' }}>
+          <div className="config-dual-sidebar-header">
+            <IconComponent size={16} />
+            <span>{tipo === 'produto' ? 'Produtos' : tipo === 'promotora' ? 'Promotoras' : 'Convênios'}</span>
+            <span className="config-dual-count">{items.length}</span>
+            <button className="config-dual-add-btn" onClick={() => abrirModal(tipo)} title={`Novo ${tipo === 'produto' ? 'produto' : tipo === 'promotora' ? 'promotora' : 'convênio'}`}>
+              <Plus size={14} />
+            </button>
+          </div>
+          <div className="config-dual-lista">
+            {items.length === 0 ? (
+              <p style={{ padding: 20, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
+                Nenhum {tipo === 'produto' ? 'produto' : tipo === 'promotora' ? 'promotora' : 'convênio'} cadastrado.
+              </p>
+            ) : (
+              items.map(item => (
+                <div key={item.id} className="config-dual-item">
+                  <div className="config-dual-item-info">
+                    <span className="config-dual-item-nome">{item.nome}</span>
+                    {item.ativo !== undefined && (
+                      <span className={`config-badge-sm ${item.ativo ? 'ativo' : 'inativo'}`}>
+                        {item.ativo ? 'Ativo' : 'Inativo'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="config-dual-item-actions" style={{ display: 'flex' }}>
+                    <button className="config-dual-item-btn" onClick={() => abrirModal(tipo, item)} title="Editar">
+                      <Pencil size={12} />
+                    </button>
+                    {item.ativo !== undefined && (
+                      <button className="config-dual-item-btn" onClick={() => toggleAtivo(item, tipo)} title={item.ativo ? 'Inativar' : 'Ativar'}>
+                        {item.ativo ? <PowerOff size={12} /> : <Power size={12} />}
+                      </button>
+                    )}
+                    <button className="config-dual-item-btn" onClick={() => excluirItem(item.id, tipo)} title="Excluir" style={{ color: '#dc2626' }}>
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </aside>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return <LoadingBars />
+  }
+
   return (
     <div className="config-sistema-page">
-      <header className="config-sistema-header">
+      <header className="form-header">
         <div>
           <h1>Configurações do Sistema</h1>
-          <p className="config-sistema-subtitle">Gerencie bancos, operações e convênios do sistema</p>
+          <p className="header-subtitle">Gerencie bancos, produtos, convênios e promotoras do sistema</p>
         </div>
       </header>
 
@@ -177,8 +246,7 @@ export default function ConfiguracoesSistema() {
             <button
               key={tab.id}
               className={`config-tab ${tabAtiva === tab.id ? 'active' : ''}`}
-              onClick={() => !tab.disabled && setTabAtiva(tab.id)}
-              disabled={tab.disabled}
+              onClick={() => setTabAtiva(tab.id)}
             >
               <tab.icon size={18} />
               <span>{tab.label}</span>
@@ -193,7 +261,7 @@ export default function ConfiguracoesSistema() {
                 <Building2 size={16} />
                 <span>Bancos</span>
                 <span className="config-dual-count">{bancos.length}</span>
-                <button className="config-dual-add-btn" onClick={abrirModalNovo} title="Novo banco">
+                <button className="config-dual-add-btn" onClick={() => abrirModal('banco')} title="Novo banco">
                   <Plus size={14} />
                 </button>
               </div>
@@ -211,10 +279,10 @@ export default function ConfiguracoesSistema() {
                       </span>
                     </div>
                     <div className="config-dual-item-actions">
-                      <button className="config-dual-item-btn" onClick={(e) => abrirModalEditar(b)} title="Editar">
+                      <button className="config-dual-item-btn" onClick={(e) => { e.stopPropagation(); abrirModal('banco', b) }} title="Editar">
                         <Pencil size={12} />
                       </button>
-                      <button className="config-dual-item-btn" onClick={(e) => toggleAtivo(b, e)} title={b.ativo ? 'Inativar' : 'Ativar'}>
+                      <button className="config-dual-item-btn" onClick={(e) => { e.stopPropagation(); toggleAtivo(b, 'banco') }} title={b.ativo ? 'Inativar' : 'Ativar'}>
                         {b.ativo ? <PowerOff size={12} /> : <Power size={12} />}
                       </button>
                     </div>
@@ -244,7 +312,7 @@ export default function ConfiguracoesSistema() {
                         <span className={`config-status ${bancoAtual?.ativo ? 'ativo' : 'inativo'}`}>
                           {bancoAtual?.ativo ? 'Ativo' : 'Inativo'}
                         </span>
-                        <button className="config-dual-item-btn" onClick={(e) => abrirModalEditar(bancoAtual)} title="Editar banco" style={{ width: 28, height: 28 }}>
+                        <button className="config-dual-item-btn" onClick={() => abrirModal('banco', bancoAtual)} title="Editar banco" style={{ width: 28, height: 28 }}>
                           <Pencil size={13} />
                         </button>
                       </div>
@@ -296,7 +364,7 @@ export default function ConfiguracoesSistema() {
                   </section>
 
                   <div className="config-dual-save-bar">
-                    <button className="config-btn-primary" onClick={salvar} disabled={salvando}>
+                    <button className="config-btn-primary" onClick={salvarVinculos} disabled={salvando}>
                       <Save size={16} />
                       {salvando ? 'Salvando...' : 'Salvar Configurações'}
                     </button>
@@ -308,13 +376,22 @@ export default function ConfiguracoesSistema() {
             </main>
           </div>
         )}
+
+        {tabAtiva === 'produtos' && renderListaSimples(operacoes, 'produto', Package)}
+
+        {tabAtiva === 'convenios' && renderListaSimples(convenios, 'convenio', Handshake)}
+
+        {tabAtiva === 'promotora' && renderListaSimples(promotoras, 'promotora', UserPlus)}
+
       </div>
 
       {modalAberto && (
-        <div className="modal-overlay" onClick={() => setModalAberto(false)}>
+        <div className="modal-overlay" onClick={fecharModal}>
           <div className="modal-container" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
             <div className="modal-header">
-              {editandoBanco ? 'Editar Banco' : 'Novo Banco'}
+              {editandoId
+                ? `Editar ${modalTipo === 'banco' ? 'Banco' : modalTipo === 'produto' ? 'Produto' : modalTipo === 'promotora' ? 'Promotora' : 'Convênio'}`
+                : `Novo ${modalTipo === 'banco' ? 'Banco' : modalTipo === 'produto' ? 'Produto' : modalTipo === 'promotora' ? 'Promotora' : 'Convênio'}`}
             </div>
             <div className="modal-body" style={{ padding: 20 }}>
               <div className="config-form">
@@ -325,26 +402,28 @@ export default function ConfiguracoesSistema() {
                     value={modalForm.nome}
                     onChange={e => setModalForm({ ...modalForm, nome: e.target.value })}
                     className="config-input"
-                    placeholder="Nome do banco"
+                    placeholder={`Nome do ${modalTipo === 'banco' ? 'banco' : modalTipo === 'produto' ? 'produto' : modalTipo === 'promotora' ? 'promotora' : 'convênio'}`}
                     autoFocus
                   />
                 </div>
-                <div className="config-field">
-                  <label>Código</label>
-                  <input
-                    type="text"
-                    value={modalForm.codigo}
-                    onChange={e => setModalForm({ ...modalForm, codigo: e.target.value })}
-                    className="config-input"
-                    placeholder="Código do banco"
-                  />
-                </div>
+                {modalTipo === 'banco' && (
+                  <div className="config-field">
+                    <label>Código</label>
+                    <input
+                      type="text"
+                      value={modalForm.codigo}
+                      onChange={e => setModalForm({ ...modalForm, codigo: e.target.value })}
+                      className="config-input"
+                      placeholder="Código do banco"
+                    />
+                  </div>
+                )}
               </div>
               {modalErro && <div className="config-erro">{modalErro}</div>}
             </div>
             <div className="modal-footer" style={{ padding: '12px 20px', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button className="btn-cancel" onClick={() => { setModalAberto(false); setModalErro('') }}>Cancelar</button>
-              <button className="btn-primary" onClick={salvarBanco}>{editandoBanco ? 'Salvar' : 'Criar'}</button>
+              <button className="btn-cancel" onClick={fecharModal}>Cancelar</button>
+              <button className="btn-primary" onClick={salvarItem}>{editandoId ? 'Salvar' : 'Criar'}</button>
             </div>
           </div>
         </div>

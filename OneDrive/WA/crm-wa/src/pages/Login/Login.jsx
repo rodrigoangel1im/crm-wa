@@ -50,7 +50,7 @@ export default function Login({ setPaginaAtual }) {
       <div className="login-container">
         <div className="login-brand">
           <div className="brand-icon">
-            <span>W</span>
+            <img src="/logo_transparente.png" alt="WA Promotora" className="brand-logo" />
           </div>
           <span className="brand-name">WA Promotora</span>
         </div>

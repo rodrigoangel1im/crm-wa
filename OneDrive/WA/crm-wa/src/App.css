@@ -13,3 +13,27 @@ html, body, #root {
     height: 100%;
     overflow-x: hidden;
 }
+.header-subtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+}
+.form-header, .page-header, .mainHeader {
+  background: #3f3b6c;
+  align-self: stretch;
+  margin: -20px -20px 28px;
+  padding: 0 50px;
+  text-align: center;
+  position: relative;
+  height: 70px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.form-header h1, .page-header h1, .mainHeader h1 {
+  color: white;
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+}

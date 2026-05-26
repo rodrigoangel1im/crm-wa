@@ -34,3 +34,12 @@
   color: #888;
   font-size: 16px;
 }
+
+.status-clickable {
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.status-clickable:hover {
+  opacity: 0.75;
+}
