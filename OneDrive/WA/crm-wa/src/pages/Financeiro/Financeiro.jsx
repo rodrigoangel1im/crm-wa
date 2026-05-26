@@ -87,7 +87,6 @@ export default function Financeiro({ setPaginaAtual }) {
           usuario_digitador_id,
           usuario_digitador:usuario_digitador_id (nome),
           valor_liberado,
-          valor_liberado_real,
           atualizado_em,
           matricula (
             cliente (nome_completo, cpf),
@@ -151,7 +150,6 @@ export default function Financeiro({ setPaginaAtual }) {
         statusCor: item.proposta_status?.cor || '#333',
         statusHistorico: item.proposta_status?.historico || '',
         valorLiberado: item.valor_liberado,
-        valorLiberadoReal: item.valor_liberado_real,
         banco: item.banco_credor?.nome || 'N/A',
         tabelaBanco: item.codigo_tabela || '',
         promotora: item.promotora?.nome || '',
