@@ -1,0 +1,229 @@
+.horarios-list {
+  position: relative;
+}
+
+.horarios-table-wrapper {
+  overflow-x: auto;
+  padding: 0 24px 24px;
+}
+
+.horarios-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.horarios-table thead th {
+  text-align: left;
+  padding: 10px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: #fafafa;
+  border-bottom: 1px solid #eee;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.horarios-table thead th:first-child {
+  padding-left: 0;
+}
+
+.horarios-table tbody td {
+  padding: 8px 8px;
+  border-bottom: 1px solid #f2f2f2;
+  vertical-align: middle;
+}
+
+.horarios-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.horarios-table tbody tr:hover td {
+  background: #f8f7fc;
+}
+
+.horario-row-weekend td {
+  background: #fafafa;
+}
+
+.horario-row-weekend:hover td {
+  background: #f5f4f8;
+}
+
+.horario-row-weekend .horario-dia {
+  color: #bbb;
+}
+
+.horario-dia {
+  font-weight: 600;
+  color: #3f3b6c;
+  white-space: nowrap;
+  min-width: 90px;
+  padding-left: 0 !important;
+}
+
+.horario-valor {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  background: #f5f5f8;
+  border-radius: 6px;
+  min-width: 60px;
+  text-align: center;
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+
+.horario-horas {
+  font-weight: 700;
+  font-size: 13px;
+  color: #999;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.horario-horas.preenchido {
+  color: #3f3b6c;
+}
+
+.horario-saldo {
+  font-weight: 700;
+  font-size: 12px;
+  text-align: center;
+  white-space: nowrap;
+  color: #999;
+}
+
+.horario-saldo.positivo {
+  color: #2e7d32;
+}
+
+.horario-saldo.negativo {
+  color: #c62828;
+}
+
+.horarios-loading {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #888;
+  border-radius: 0 0 12px 12px;
+}
+
+.horarios-empty {
+  padding: 40px 24px;
+  text-align: center;
+  color: #999;
+  font-style: italic;
+  font-size: 14px;
+}
+
+/* ---- Import button ---- */
+.btn-importar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #3f3b6c;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  cursor: pointer;
+  transition: background 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-importar:hover {
+  background: #2a2750;
+}
+
+/* ---- CSV modal ---- */
+.csv-exemplo {
+  background: #f5f5f8;
+  border: 1px solid #e0ddee;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-family: Consolas, monospace;
+  color: #555;
+  line-height: 1.6;
+  margin-top: 4px;
+}
+
+.import-modos {
+  display: flex;
+  gap: 20px;
+  margin-top: 4px;
+}
+
+.csv-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: Consolas, monospace;
+  color: #333;
+  background: #fafafa;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.csv-textarea:focus {
+  border-color: #3f3b6c;
+}
+
+.csv-file-input {
+  font-size: 13px;
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  color: #555;
+}
+
+.csv-file-name {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #3f3b6c;
+  font-weight: 600;
+}
+
+.import-resultado {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 12px;
+}
+
+.import-resultado.sucesso {
+  background: #e6f7e6;
+  color: #2e7d32;
+  border: 1px solid #b7e0b7;
+}
+
+.import-resultado.erro {
+  background: #fbe9e7;
+  color: #c62828;
+  border: 1px solid #ffcdd2;
+}
+
+.import-erros {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+}
