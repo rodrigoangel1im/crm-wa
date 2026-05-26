@@ -7,9 +7,16 @@ import ModalFormUsuario from './ModalFormUsuario'
 import ModalImportarPonto from './ModalImportarPonto'
 
 const RECURSOS = [
-  { id: 'propostas', nome: 'Propostas' },
-  { id: 'simulacoes', nome: 'Simulações' },
+  { id: 'inicio', nome: 'Início' },
   { id: 'contratos', nome: 'Contratos' },
+  { id: 'simulacoes', nome: 'Simulações' },
+  { id: 'esteira-simulacoes', nome: 'Esteira - Simulações' },
+  { id: 'propostas', nome: 'Esteira - Propostas' },
+  { id: 'pagas-canceladas', nome: 'Esteira - Pagas/Canceladas' },
+  { id: 'financeiro', nome: 'Financeiro' },
+  { id: 'base-conhecimento', nome: 'Base de Conhecimento' },
+  { id: 'configuracoes', nome: 'Configurações' },
+  { id: 'perfil', nome: 'Perfil' },
   { id: 'usuarios', nome: 'Usuários' },
   { id: 'relatorios', nome: 'Relatórios' },
 ]
