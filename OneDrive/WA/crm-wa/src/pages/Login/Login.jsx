@@ -30,13 +30,14 @@ export default function Login({ setPaginaAtual }) {
           localStorage.setItem('usuario_admin_crmwa', usuario.admin ? 'true' : 'false')
           localStorage.setItem('usuario_perfil_crmwa', usuario.perfil || '')
 
-          const { data: userPerms } = await supabase
-            .from('usuario_permissao')
+          const perfil = usuario.perfil || ''
+          const { data: perfilPerms } = await supabase
+            .from('perfil_permissao')
             .select('recurso, permissao')
-            .eq('usuario_id', usuario.id)
-          if (userPerms) {
+            .eq('perfil', perfil)
+          if (perfilPerms) {
             const permMap = {}
-            userPerms.forEach(p => { permMap[p.recurso] = p.permissao })
+            perfilPerms.forEach(p => { permMap[p.recurso] = p.permissao })
             setPermissoes(permMap)
           }
         }

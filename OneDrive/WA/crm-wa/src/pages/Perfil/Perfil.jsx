@@ -47,6 +47,8 @@ export default function Perfil() {
   const [usuarioNome, setUsuarioNome] = useState('')
   const [usuarioAdmin, setUsuarioAdmin] = useState(false)
   const [usuarioId, setUsuarioId] = useState(null)
+  const [perfilPermissoes, setPerfilPermissoes] = useState([])
+  const [perfilSelecionado, setPerfilSelecionado] = useState(null)
 
   const [modalUsuarioAberto, setModalUsuarioAberto] = useState(false)
   const [editandoUsuario, setEditandoUsuario] = useState(null)
@@ -90,10 +92,11 @@ export default function Perfil() {
   async function carregarDados() {
     setLoading(true)
     try {
-      const [usuariosRes, logsRes, permissoesRes] = await Promise.all([
+      const [usuariosRes, logsRes, permissoesRes, perfilPermsRes] = await Promise.all([
         supabase.from('usuario').select('*').order('nome'),
         supabase.from('usuario_log').select('*, usuario:usuario_id(nome)').order('criado_em', { ascending: false }).limit(100),
         supabase.from('usuario_permissao').select('*, usuario:usuario_id(nome)').order('usuario_id'),
+        supabase.from('perfil_permissao').select('*').order('perfil'),
       ])
       if (usuariosRes.error) throw usuariosRes.error
       setUsuarios(usuariosRes.data || [])
@@ -101,6 +104,8 @@ export default function Perfil() {
       setLogs(logsRes.data || [])
       if (permissoesRes.error) throw permissoesRes.error
       setPermissoes(permissoesRes.data || [])
+      if (perfilPermsRes.error) throw perfilPermsRes.error
+      setPerfilPermissoes(perfilPermsRes.data || [])
     } catch (err) {
       console.error('Erro ao carregar dados do admin:', err)
     } finally {
@@ -267,6 +272,17 @@ export default function Perfil() {
       await carregarDados()
     } catch (err) {
       console.error('Erro ao salvar permissão:', err)
+    }
+  }
+
+  async function salvarPermissaoPerfil(perfil, recurso, permissao) {
+    try {
+      await supabase
+        .from('perfil_permissao')
+        .upsert({ perfil, recurso, permissao }, { onConflict: 'perfil, recurso' })
+      await carregarDados()
+    } catch (err) {
+      console.error('Erro ao salvar permissão de perfil:', err)
     }
   }
 
@@ -485,44 +501,50 @@ export default function Perfil() {
             {usuarioAdmin && tabAtiva === 'permissoes' && (
               <div className="tab-section">
                 <div className="tab-header">
-                  <h2>Permissões por Usuário</h2>
+                  <h2>Permissões por Perfil</h2>
                 </div>
-                <div className="table-wrapper">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Usuário</th>
-                        {RECURSOS.map(r => <th key={r.id}>{r.nome}</th>)}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {usuarios.length === 0 ? (
-                        <tr><td colSpan={RECURSOS.length + 1} className="empty-row">Nenhum usuário cadastrado.</td></tr>
-                      ) : (
-                        usuarios.map(u => (
-                          <tr key={u.id}>
-                            <td>{u.nome}</td>
-                            {RECURSOS.map(r => {
-                              const nivel = getPermissao(u.id, r.id)
-                              return (
-                                <td key={r.id}>
-                                  <select
-                                    value={nivel}
-                                    onChange={(e) => salvarPermissao(u.id, r.id, e.target.value)}
-                                    className="perm-select"
-                                  >
-                                    <option value="nenhum">Nenhum</option>
-                                    <option value="visualizar">Visualizar</option>
-                                    <option value="gerenciar">Gerenciar</option>
-                                  </select>
-                                </td>
-                              )
-                            })}
-                          </tr>
-                        ))
+                <div className="perfil-permissoes-list">
+                  {PERFIS.map(perfil => (
+                    <div key={perfil} className={`perfil-card ${perfilSelecionado === perfil ? 'expanded' : ''}`}>
+                      <div className="perfil-card-header" onClick={() => setPerfilSelecionado(perfilSelecionado === perfil ? null : perfil)}>
+                        <span className="perfil-nome">{perfil}</span>
+                        <span className={`perfil-arrow ${perfilSelecionado === perfil ? 'open' : ''}`}>›</span>
+                      </div>
+                      {perfilSelecionado === perfil && (
+                        <div className="perfil-card-body">
+                          <table className="admin-table">
+                            <thead>
+                              <tr>
+                                <th>Item do Menu</th>
+                                <th style={{ width: 160 }}>Acesso</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {RECURSOS.map(r => {
+                                const p = perfilPermissoes.find(pp => pp.perfil === perfil && pp.recurso === r.id)
+                                const atual = p ? p.permissao : 'nenhum'
+                                return (
+                                  <tr key={r.id}>
+                                    <td>{r.nome}</td>
+                                    <td>
+                                      <label className="switch-label">
+                                        <input
+                                          type="checkbox"
+                                          checked={atual === 'visualizar'}
+                                          onChange={(e) => salvarPermissaoPerfil(perfil, r.id, e.target.checked ? 'visualizar' : 'nenhum')}
+                                        />
+                                        <span className="switch-text">{atual === 'visualizar' ? 'Visualizar' : 'Não visualizar'}</span>
+                                      </label>
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
                       )}
-                    </tbody>
-                  </table>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
