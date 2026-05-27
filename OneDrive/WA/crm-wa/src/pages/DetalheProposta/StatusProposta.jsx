@@ -1593,7 +1593,7 @@ export default function StatusProposta({ setPaginaAtual }) {
           key={documentoSelecionado.id}
           isOpen={modalAnexarOpen}
           onClose={() => setModalAnexarOpen(false)}
-          propostaId={JSON.parse(localStorage.getItem('propostaSelecionada_crmwa') || '{}')?.id}
+          propostaIds={[JSON.parse(localStorage.getItem('propostaSelecionada_crmwa') || '{}')?.id]}
           tipoDocumento={documentoSelecionado.id}
           tipoLabel={documentoSelecionado.label}
           onAnexar={() => {

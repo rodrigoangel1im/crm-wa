@@ -18,7 +18,7 @@ const ModalAnexarDocumento = ({ isOpen, onClose, propostaIds, tipoDocumento, tip
   if (!isOpen) return null
 
   const handleFileSelect = (e) => {
-    const file = e.target.files[0]
+    const file = e.target.files?.[0]
     if (file) setSelectedFile(file)
   }
 
@@ -62,7 +62,8 @@ const ModalAnexarDocumento = ({ isOpen, onClose, propostaIds, tipoDocumento, tip
       const results = []
       for (const item of locais) {
         const ext = item.file.name.split('.').pop()
-        const storagePath = `${propostaIds[0]}/${tipoDocumento}/${Date.now()}_${Math.random().toString(36).slice(2, 6)}.${ext}`
+        const primeiraProposta = propostaIds?.[0]
+        const storagePath = `${primeiraProposta}/${tipoDocumento}/${Date.now()}_${Math.random().toString(36).slice(2, 6)}.${ext}`
 
         const { error: uploadError } = await supabase.storage
           .from('documentos-proposta')
