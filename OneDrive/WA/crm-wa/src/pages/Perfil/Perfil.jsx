@@ -721,7 +721,11 @@ export default function Perfil() {
               </>
             )}
 
-            {!usuarioAdmin && tabAtiva === 'senhas' && <SenhaSection usuarioLogado={usuarioLogado} />}
+            {!usuarioAdmin && tabAtiva === 'senhas' && (
+              <div className="tab-section" style={{ textAlign: 'center', padding: '60px 20px' }}>
+                <p style={{ fontSize: 18, color: '#888' }}>Em desenvolvimento...</p>
+              </div>
+            )}
           </>
         )}
       </div>
