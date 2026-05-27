@@ -62,7 +62,10 @@ export default function Login({ setPaginaAtual }) {
       <div className="login-container">
         <div className="login-brand">
           <div className="brand-icon">
-            <img src="/logo_transparente.png" alt="WA Promotora" className="brand-logo" />
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+              <rect width="48" height="48" rx="12" fill="#3f3b6c"/>
+              <text x="24" y="32" textAnchor="middle" fontSize="20" fontWeight="bold" fill="#f0c977" fontFamily="Verdana">WA</text>
+            </svg>
           </div>
           <span className="brand-name">WA Promotora</span>
         </div>
