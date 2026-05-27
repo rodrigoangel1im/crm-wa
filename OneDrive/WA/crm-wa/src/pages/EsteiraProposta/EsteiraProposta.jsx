@@ -592,7 +592,7 @@ export default function EsteiraProposta({ setPaginaAtual }) {
       <ModalAnexarDocumento
         isOpen={docUploadModal.open}
         onClose={() => setDocUploadModal({ open: false, tipo: null, label: '', propostaId: null })}
-        propostaId={docUploadModal.propostaId}
+        propostaIds={docUploadModal.propostaId ? [docUploadModal.propostaId] : []}
         tipoDocumento={docUploadModal.tipo}
         tipoLabel={docUploadModal.label}
         anexosExistentes={docUploadModal.tipo ? (docAnexos[docUploadModal.tipo] ? [docAnexos[docUploadModal.tipo]] : []) : []}
