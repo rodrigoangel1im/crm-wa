@@ -112,14 +112,16 @@ export default function Sidebar({ paginaAtual, setPaginaAtual, collapsed, onTogg
             <span className="nav-text">Financeiro</span>
           </a>
         )}
-        <a
-          href="#"
-          className={paginaAtual === 'base-conhecimento' ? 'active' : ''}
-          onClick={(e) => { e.preventDefault(); setPaginaAtual('base-conhecimento') }}
-        >
-          <Book size={20} className="icon" />
-          <span className="nav-text">Base de Conhecimento</span>
-        </a>
+        {canAccess('base-conhecimento') && (
+          <a
+            href="#"
+            className={paginaAtual === 'base-conhecimento' ? 'active' : ''}
+            onClick={(e) => { e.preventDefault(); setPaginaAtual('base-conhecimento') }}
+          >
+            <Book size={20} className="icon" />
+            <span className="nav-text">Base de Conhecimento</span>
+          </a>
+        )}
         {canAccess('configuracoes') && (
           <a
             href="#"

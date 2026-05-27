@@ -1,8 +1,6 @@
 import React from 'react'
 
-const PERFIS = ['Vendedor', 'Operacional', 'RH', 'Marketing', 'Administrador']
-
-export default function ModalFormUsuario({ editando, form, setForm, erro }) {
+export default function ModalFormUsuario({ editando, form, setForm, erro, tipoPerfis }) {
   const alterar = (campo, valor) => setForm({ ...form, [campo]: valor })
 
   const renderInput = (campo, label, type = 'text', placeholder = '', opts = {}) => (
@@ -35,9 +33,15 @@ export default function ModalFormUsuario({ editando, form, setForm, erro }) {
       <div className="form-row">
         <div className="form-group" style={{ flex: 1 }}>
           <label>Perfil</label>
-          <select value={form.perfil} onChange={(e) => alterar('perfil', e.target.value)} style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 6, fontSize: 13 }}>
-            {PERFIS.map((p) => (
-              <option key={p} value={p}>{p}</option>
+          <select value={form.tipo_perfil_id ?? ''} onChange={(e) => {
+            const id = e.target.value ? Number(e.target.value) : null
+            const perfil = tipoPerfis.find(t => t.id === id)
+            alterar('tipo_perfil_id', id)
+            alterar('perfil', perfil ? perfil.nome : '')
+          }} style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 6, fontSize: 13 }}>
+            <option value="">Selecione um perfil</option>
+            {tipoPerfis.map((t) => (
+              <option key={t.id} value={t.id}>{t.nome}</option>
             ))}
           </select>
         </div>

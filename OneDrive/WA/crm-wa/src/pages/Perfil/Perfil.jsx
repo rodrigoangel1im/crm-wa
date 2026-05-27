@@ -46,15 +46,17 @@ export default function Perfil() {
   const [loading, setLoading] = useState(true)
   const [usuarioNome, setUsuarioNome] = useState('')
   const [usuarioAdmin, setUsuarioAdmin] = useState(false)
+  const [usuarioPerfil, setUsuarioPerfil] = useState('')
   const [usuarioId, setUsuarioId] = useState(null)
   const [perfilPermissoes, setPerfilPermissoes] = useState([])
   const [perfilSelecionado, setPerfilSelecionado] = useState(null)
+  const [tipoPerfis, setTipoPerfis] = useState([])
 
   const [modalUsuarioAberto, setModalUsuarioAberto] = useState(false)
   const [editandoUsuario, setEditandoUsuario] = useState(null)
   const [formUsuario, setFormUsuario] = useState({
     nome: '', email: '', login: '', senha: '',
-    perfil: 'Vendedor', ativo: true, admin: false,
+    perfil: 'Vendedor', tipo_perfil_id: null, ativo: true, admin: false,
     cpf: '', rg: '', data_nascimento: '', telefone: '', telefone2: '',
     cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '',
     contato_emergencia_nome: '', contato_emergencia_telefone: '', contato_emergencia_parentesco: '',
@@ -80,6 +82,7 @@ export default function Perfil() {
         if (usuario) {
           setUsuarioId(usuario.id)
           setUsuarioAdmin(usuario.admin || false)
+          setUsuarioPerfil(usuario.perfil || 'Vendedor')
           if (usuario.admin) setTabAtiva('usuarios')
         }
       }
@@ -92,11 +95,12 @@ export default function Perfil() {
   async function carregarDados() {
     setLoading(true)
     try {
-      const [usuariosRes, logsRes, permissoesRes, perfilPermsRes] = await Promise.all([
-        supabase.from('usuario').select('*').order('nome'),
+      const [usuariosRes, logsRes, permissoesRes, perfilPermsRes, tipoPerfisRes] = await Promise.all([
+        supabase.from('usuario').select('*, tipo_perfil:tipo_perfil_id(nome)').order('nome'),
         supabase.from('usuario_log').select('*, usuario:usuario_id(nome)').order('criado_em', { ascending: false }).limit(100),
         supabase.from('usuario_permissao').select('*, usuario:usuario_id(nome)').order('usuario_id'),
         supabase.from('perfil_permissao').select('*').order('perfil'),
+        supabase.from('tipo_perfil').select('*').order('id'),
       ])
       if (usuariosRes.error) throw usuariosRes.error
       setUsuarios(usuariosRes.data || [])
@@ -104,8 +108,16 @@ export default function Perfil() {
       setLogs(logsRes.data || [])
       if (permissoesRes.error) throw permissoesRes.error
       setPermissoes(permissoesRes.data || [])
-      if (perfilPermsRes.error) throw perfilPermsRes.error
-      setPerfilPermissoes(perfilPermsRes.data || [])
+      if (perfilPermsRes.error) {
+          console.warn('Erro ao carregar permissoes de perfil:', perfilPermsRes.error)
+        } else {
+          setPerfilPermissoes(perfilPermsRes.data || [])
+        }
+      if (tipoPerfisRes.error) {
+          console.warn('Erro ao carregar tipos de perfil:', tipoPerfisRes.error)
+        } else {
+          setTipoPerfis(tipoPerfisRes.data || [])
+        }
     } catch (err) {
       console.error('Erro ao carregar dados do admin:', err)
     } finally {
@@ -125,9 +137,10 @@ export default function Perfil() {
             email: formUsuario.email,
             login: formUsuario.email.split('@')[0],
             perfil: formUsuario.perfil,
+            tipo_perfil_id: formUsuario.tipo_perfil_id,
             ativo: formUsuario.ativo,
             admin: formUsuario.admin,
-            cpf: formUsuario.cpf, rg: formUsuario.rg, data_nascimento: formUsuario.data_nascimento,
+            cpf: formUsuario.cpf, rg: formUsuario.rg, data_nascimento: formUsuario.data_nascimento || null,
             telefone: formUsuario.telefone, telefone2: formUsuario.telefone2,
             cep: formUsuario.cep, logradouro: formUsuario.logradouro, numero: formUsuario.numero,
             complemento: formUsuario.complemento, bairro: formUsuario.bairro, cidade: formUsuario.cidade, estado: formUsuario.estado,
@@ -176,9 +189,10 @@ export default function Perfil() {
               nome: formUsuario.nome,
               email: formUsuario.email,
               perfil: formUsuario.perfil,
+              tipo_perfil_id: formUsuario.tipo_perfil_id,
               admin: formUsuario.admin,
               ativo: formUsuario.ativo,
-              cpf: formUsuario.cpf, rg: formUsuario.rg, data_nascimento: formUsuario.data_nascimento,
+              cpf: formUsuario.cpf, rg: formUsuario.rg, data_nascimento: formUsuario.data_nascimento || null,
               telefone: formUsuario.telefone, telefone2: formUsuario.telefone2,
               cep: formUsuario.cep, logradouro: formUsuario.logradouro, numero: formUsuario.numero,
               complemento: formUsuario.complemento, bairro: formUsuario.bairro, cidade: formUsuario.cidade, estado: formUsuario.estado,
@@ -199,9 +213,10 @@ export default function Perfil() {
             email: formUsuario.email,
             login: formUsuario.email.split('@')[0],
             perfil: formUsuario.perfil,
+            tipo_perfil_id: formUsuario.tipo_perfil_id,
             admin: formUsuario.admin,
             ativo: formUsuario.ativo,
-            cpf: formUsuario.cpf, rg: formUsuario.rg, data_nascimento: formUsuario.data_nascimento,
+            cpf: formUsuario.cpf, rg: formUsuario.rg, data_nascimento: formUsuario.data_nascimento || null,
             telefone: formUsuario.telefone, telefone2: formUsuario.telefone2,
             cep: formUsuario.cep, logradouro: formUsuario.logradouro, numero: formUsuario.numero,
             complemento: formUsuario.complemento, bairro: formUsuario.bairro, cidade: formUsuario.cidade, estado: formUsuario.estado,
@@ -221,7 +236,7 @@ export default function Perfil() {
       setEditandoUsuario(null)
       setFormUsuario({
         nome: '', email: '', login: '', senha: '',
-        perfil: 'Vendedor', ativo: true, admin: false,
+        perfil: 'Vendedor', tipo_perfil_id: null, ativo: true, admin: false,
         cpf: '', rg: '', data_nascimento: '', telefone: '', telefone2: '',
         cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '',
         contato_emergencia_nome: '', contato_emergencia_telefone: '', contato_emergencia_parentesco: '',
@@ -390,9 +405,10 @@ export default function Perfil() {
 
   function abrirModalEditar(u) {
     setEditandoUsuario(u)
+    const tipoPerfilId = u.tipo_perfil_id || tipoPerfis.find(t => t.nome === u.perfil)?.id || null
     setFormUsuario({
       nome: u.nome || '', email: u.email || '', login: u.login || '', senha: '',
-      perfil: u.perfil || 'Vendedor', ativo: u.ativo, admin: u.admin,
+      perfil: u.perfil || 'Vendedor', tipo_perfil_id: tipoPerfilId, ativo: u.ativo, admin: u.admin,
       cpf: u.cpf || '', rg: u.rg || '', data_nascimento: u.data_nascimento || '', telefone: u.telefone || '', telefone2: u.telefone2 || '',
       cep: u.cep || '', logradouro: u.logradouro || '', numero: u.numero || '', complemento: u.complemento || '', bairro: u.bairro || '', cidade: u.cidade || '', estado: u.estado || '',
       contato_emergencia_nome: u.contato_emergencia_nome || '', contato_emergencia_telefone: u.contato_emergencia_telefone || '', contato_emergencia_parentesco: u.contato_emergencia_parentesco || '',
@@ -418,7 +434,7 @@ export default function Perfil() {
           <div className="admin-avatar">{iniciais || 'A'}</div>
           <div>
             <h1>{usuarioNome}</h1>
-            <span className="admin-badge">{usuarioAdmin ? 'Administrador' : 'Operador'}</span>
+            <span className="admin-badge">{usuarioAdmin ? 'Administrador' : usuarioPerfil}</span>
           </div>
         </div>
       </div>
@@ -720,6 +736,7 @@ export default function Perfil() {
                 form={formUsuario}
                 setForm={setFormUsuario}
                 erro={erroModal}
+                tipoPerfis={tipoPerfis}
               />
             </div>
             <div className="modal-footer" style={{ padding: '12px 20px', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>

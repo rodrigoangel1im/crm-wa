@@ -45,7 +45,7 @@ INSERT INTO perfil_permissao (perfil, recurso, permissao) VALUES
   ('Vendedor',  'propostas',           'visualizar'),
   ('Vendedor',  'pagas-canceladas',    'visualizar'),
   ('Vendedor',  'financeiro',          'nenhum'),
-  ('Vendedor',  'base-conhecimento',   'visualizar'),
+  ('Vendedor',  'base-conhecimento',   'nenhum'),
   ('Vendedor',  'configuracoes',       'nenhum'),
   ('Vendedor',  'perfil',              'visualizar'),
   ('Vendedor',  'usuarios',            'nenhum'),
