@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { Eye, Download } from 'lucide-react'
 import LoadingBars from '../../components/LoadingBars/LoadingBars'
 import './DetalheSimulacao.css'
 
@@ -301,6 +302,62 @@ export default function DetalheSimulacao({ setPaginaAtual }) {
             </div>
           </div>
         </div>
+
+        <div className="ds-divider" />
+
+        <div className="ds-section">
+          <h2 className="ds-section-title">Documentos Anexados ({documentos.length})</h2>
+          {documentos.length === 0 ? (
+            <p className="ds-empty-msg">Nenhum documento anexado.</p>
+          ) : (
+            <div className="ds-documentos-list">
+              {documentos.map(doc => (
+                <div key={doc.id} className="ds-documento-item">
+                  <div className="ds-documento-info">
+                    <span className="ds-documento-nome">{doc.nome_arquivo}</span>
+                    <span className="ds-documento-tipo">{doc.tipo}</span>
+                  </div>
+                  <div className="ds-documento-actions">
+                    {doc.signedUrl && (
+                      <>
+                        <button className="ds-documento-btn" title="Visualizar" onClick={() => setDocVisualizando(doc)}>
+                          <Eye size={16} />
+                        </button>
+                        <a href={doc.signedUrl} download={doc.nome_arquivo} className="ds-documento-btn" title="Download">
+                          <Download size={16} />
+                        </a>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {docVisualizando && (
+          <div className="ds-viewer-panel">
+            <div className="ds-viewer-header">
+              <span className="ds-viewer-titulo">{docVisualizando.nome_arquivo}</span>
+              <button className="ds-viewer-fechar" onClick={() => setDocVisualizando(null)}>×</button>
+            </div>
+            <div className="ds-viewer-body">
+              {docVisualizando.signedUrl ? (
+                docVisualizando.mime_type?.startsWith('image/') ? (
+                  <img src={docVisualizando.signedUrl} alt={docVisualizando.nome_arquivo} className="ds-viewer-imagem" />
+                ) : (
+                  <iframe
+                    src={docVisualizando.signedUrl}
+                    title={docVisualizando.nome_arquivo}
+                    className="ds-viewer-iframe"
+                  />
+                )
+              ) : (
+                <p className="ds-empty-msg">Não foi possível carregar o documento.</p>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="ds-divider" />
 
