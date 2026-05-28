@@ -1,0 +1,383 @@
+.form-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 40px;
+}
+
+.higienizacao-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 24px;
+  background: #f0f0f5;
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.higienizacao-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  transition: all 0.2s;
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+
+.higienizacao-tab:hover {
+  background: rgba(63, 59, 108, 0.06);
+  color: #333;
+}
+
+.higienizacao-tab.active {
+  background: #fff;
+  color: #3f3b6c;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.higienizacao-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  width: 95%;
+  max-width: 1200px;
+}
+
+.higienizacao-filtros {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.higienizacao-filtros .higienizacao-input {
+  flex: 1;
+}
+
+.higienizacao-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.higienizacao-upload-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.higienizacao-upload-bottom {
+  display: flex;
+  justify-content: center;
+}
+
+.higienizacao-arquivo-info {
+  font-size: 13px;
+  color: #888;
+  margin-left: 4px;
+}
+
+.higienizacao-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.higienizacao-input:focus {
+  border-color: #3f3b6c;
+}
+
+.higienizacao-input:disabled {
+  background: #f5f5f5;
+}
+
+.higienizacao-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: #3f3b6c;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.higienizacao-btn:hover:not(:disabled) {
+  background: #322e59;
+}
+
+.higienizacao-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.higienizacao-btn-danger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: #dc3545;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 16px;
+}
+
+.higienizacao-btn-danger:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.higienizacao-btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.higienizacao-resultado {
+  margin-top: 16px;
+}
+
+.higienizacao-qtd {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 16px;
+}
+
+.higienizacao-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+}
+
+.higienizacao-table th,
+.higienizacao-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+}
+
+.higienizacao-table th {
+  background: #f8f8fc;
+  color: #3f3b6c;
+  font-weight: 600;
+}
+
+.higienizacao-table td {
+  color: #333;
+  vertical-align: middle;
+}
+
+.higienizacao-table td svg {
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+.higienizacao-usuarios {
+  margin-top: 8px;
+}
+
+.higienizacao-usuarios-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.higienizacao-usuarios-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #3f3b6c;
+}
+
+.higienizacao-acoes {
+  display: flex;
+  gap: 6px;
+}
+
+.higienizacao-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  color: #555;
+  transition: all 0.2s;
+}
+
+.higienizacao-btn-icon:hover {
+  background: #f0f0f5;
+  color: #3f3b6c;
+}
+
+.higienizacao-btn-icon.danger:hover {
+  background: #fef0f0;
+  color: #dc3545;
+  border-color: #dc3545;
+}
+
+.higienizacao-toggle {
+  padding: 4px 12px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  background: #f5f5f5;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #999;
+  transition: all 0.2s;
+}
+
+.higienizacao-toggle.ativo {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-color: #a5d6a7;
+}
+
+.higienizacao-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.higienizacao-modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 420px;
+  max-width: 90vw;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  overflow: hidden;
+}
+
+.higienizacao-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 24px;
+  border-bottom: 1px solid #eee;
+}
+
+.higienizacao-modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #3f3b6c;
+}
+
+.higienizacao-modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.higienizacao-modal-body label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: -8px;
+}
+
+.higienizacao-modal-body .higienizacao-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.higienizacao-erro-modal {
+  font-size: 13px;
+  color: #dc3545;
+  margin: 0;
+}
+
+.higienizacao-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid #eee;
+}
+
+.higienizacao-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 60px 20px;
+  color: #999;
+  text-align: center;
+}
+
+.higienizacao-confirmar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  background: #fff8f0;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  text-align: center;
+  margin-top: 16px;
+}
+
+.higienizacao-confirmar p {
+  font-size: 14px;
+  color: #856404;
+  margin: 0;
+}
+
+.higienizacao-confirmar-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.higienizacao-concluido {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px;
+  text-align: center;
+}
+
+.higienizacao-concluido h2 {
+  font-size: 20px;
+  color: #28a745;
+  margin: 0;
+}
+
+.higienizacao-concluido p {
+  font-size: 14px;
+  color: #555;
+  margin: 0;
+}
+
+.higienizacao-concluido .higienizacao-btn {
+  margin-top: 8px;
+}
