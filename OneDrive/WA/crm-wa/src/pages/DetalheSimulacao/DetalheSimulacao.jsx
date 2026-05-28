@@ -17,6 +17,7 @@ export default function DetalheSimulacao({ setPaginaAtual }) {
   const [abaAtiva, setAbaAtiva] = useState('dados')
   const [modalConfirmDelete, setModalConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [censurarTps, setCensurarTps] = useState(false)
 
   const [bancos, setBancos] = useState([])
   const [operacoes, setOperacoes] = useState([])
@@ -309,7 +310,18 @@ export default function DetalheSimulacao({ setPaginaAtual }) {
   return (
     <div className="form-container">
       <header className="form-header">
-        <h1>Simulação #{sim.id}</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <h1>Simulação #{sim.id}</h1>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#555', cursor: 'pointer', userSelect: 'none' }}>
+            <input
+              type="checkbox"
+              checked={censurarTps}
+              onChange={e => setCensurarTps(e.target.checked)}
+              style={{ width: 16, height: 16, cursor: 'pointer' }}
+            />
+            Censurar TPS
+          </label>
+        </div>
       </header>
 
       <div className="form-content" style={{ width: '95%', maxWidth: '900px' }}>
@@ -428,7 +440,7 @@ export default function DetalheSimulacao({ setPaginaAtual }) {
                       <div><label>Valor Parcela:</label> R$ {p.valor_parcela != null ? Number(p.valor_parcela).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : 'N/A'}</div>
                       <div><label>Nº Parcelas:</label> {p.numero_parcelas || 'N/A'}</div>
                       <div><label>Taxa Juros:</label> {p.taxa_juros != null ? Number(p.taxa_juros).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '%' : 'N/A'}</div>
-                      <div><label>TPS:</label> R$ {p.tps != null ? Number(p.tps).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : 'N/A'}</div>
+                      <div><label>TPS:</label> {tpsDisplay(p.tps)}</div>
                     </div>
                   </div>
                 )
@@ -620,7 +632,13 @@ export default function DetalheSimulacao({ setPaginaAtual }) {
   )
 }
 
-function formatarTamanho(bytes) {
+  function tpsDisplay(valor) {
+    if (censurarTps) return '•••'
+    if (valor == null) return 'N/A'
+    return 'R$ ' + Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+  }
+
+  function formatarTamanho(bytes) {
   if (!bytes) return ''
   if (bytes < 1024) return bytes + ' B'
   if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB'
