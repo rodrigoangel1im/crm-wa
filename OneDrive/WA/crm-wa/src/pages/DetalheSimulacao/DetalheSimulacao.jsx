@@ -17,7 +17,7 @@ export default function DetalheSimulacao({ setPaginaAtual }) {
   const [abaAtiva, setAbaAtiva] = useState('dados')
   const [modalConfirmDelete, setModalConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [censurarTps, setCensurarTps] = useState(false)
+  const [censurarTps, setCensurarTps] = useState(() => localStorage.getItem('censurarTps_crmwa') === 'true')
 
   const [bancos, setBancos] = useState([])
   const [operacoes, setOperacoes] = useState([])
@@ -307,21 +307,16 @@ export default function DetalheSimulacao({ setPaginaAtual }) {
 
   if (!sim) return null
 
+  function toggleCensurarTps() {
+    const novo = !censurarTps
+    setCensurarTps(novo)
+    localStorage.setItem('censurarTps_crmwa', novo)
+  }
+
   return (
     <div className="form-container">
       <header className="form-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <h1>Simulação #{sim.id}</h1>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#555', cursor: 'pointer', userSelect: 'none' }}>
-            <input
-              type="checkbox"
-              checked={censurarTps}
-              onChange={e => setCensurarTps(e.target.checked)}
-              style={{ width: 16, height: 16, cursor: 'pointer' }}
-            />
-            Censurar TPS
-          </label>
-        </div>
+        <h1>Simulação #{sim.id}</h1>
       </header>
 
       <div className="form-content" style={{ width: '95%', maxWidth: '900px' }}>
@@ -419,7 +414,20 @@ export default function DetalheSimulacao({ setPaginaAtual }) {
         <div className="ds-divider" />
 
         <div className="ds-section">
-          <h2 className="ds-section-title">Lista de Propostas ({propostas.length})</h2>
+          <h2 className="ds-section-title">
+            Lista de Propostas ({propostas.length})
+            <button
+              onClick={toggleCensurarTps}
+              style={{
+                marginLeft: 12, fontSize: 11, padding: '3px 10px', borderRadius: 4,
+                border: '1px solid #ccc', background: censurarTps ? '#dc3545' : '#fff',
+                color: censurarTps ? '#fff' : '#333', cursor: 'pointer', verticalAlign: 'middle'
+              }}
+              title="Alternar censura do TPS"
+            >
+              TPS: {censurarTps ? 'oculto' : 'visível'}
+            </button>
+          </h2>
           {propostas.length === 0 ? (
             <p className="ds-empty-msg">Nenhuma proposta adicionada.</p>
           ) : (
@@ -440,7 +448,7 @@ export default function DetalheSimulacao({ setPaginaAtual }) {
                       <div><label>Valor Parcela:</label> R$ {p.valor_parcela != null ? Number(p.valor_parcela).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : 'N/A'}</div>
                       <div><label>Nº Parcelas:</label> {p.numero_parcelas || 'N/A'}</div>
                       <div><label>Taxa Juros:</label> {p.taxa_juros != null ? Number(p.taxa_juros).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '%' : 'N/A'}</div>
-                      <div><label>TPS:</label> {tpsDisplay(p.tps)}</div>
+                      {!censurarTps && <div><label>TPS:</label> {p.tps != null ? 'R$ ' + Number(p.tps).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : 'N/A'}</div>}
                     </div>
                   </div>
                 )
@@ -631,12 +639,6 @@ export default function DetalheSimulacao({ setPaginaAtual }) {
     </div>
   )
 }
-
-  function tpsDisplay(valor) {
-    if (censurarTps) return '•••'
-    if (valor == null) return 'N/A'
-    return 'R$ ' + Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-  }
 
   function formatarTamanho(bytes) {
   if (!bytes) return ''
