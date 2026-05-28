@@ -19,6 +19,7 @@ import AnexarDocumento from './pages/AnexarDocumento/AnexarDocumento'
 import Financeiro from './pages/Financeiro/Financeiro'
 import StatusFinanceiro from './pages/Financeiro/StatusFinanceiro/StatusFinanceiro'
 import BaseConhecimento from './pages/BaseConhecimento/BaseConhecimento'
+import Higienizacao from './pages/Higienizacao/Higienizacao'
 import Sidebar from './components/Sidebar/Sidebar'
 import LoadingBars from './components/LoadingBars/LoadingBars'
 import ChatBot from './components/ChatBot/ChatBot'
@@ -97,6 +98,7 @@ export default function App() {
           {paginaAtual === 'financeiro' && <Financeiro setPaginaAtual={setPaginaAtual} />}
           {paginaAtual === 'status-financeiro' && <StatusFinanceiro setPaginaAtual={setPaginaAtual} />}
           {paginaAtual === 'base-conhecimento' && <BaseConhecimento />}
+          {paginaAtual === 'higienizacao' && <Higienizacao />}
         </main>
       </div>
       <ChatBot />

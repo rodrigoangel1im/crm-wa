@@ -293,6 +293,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
   }, [tipoConvenio])
 
   const buscarDadosCliente = async () => {
+    setCadastroPuxado(true)
     setLoadingCadastro(true)
     try {
       const cpfLimpo = cpf.replace(/\D/g, "")
@@ -1191,7 +1192,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
             </div>
           </section>
 
-          <section className={`form-section ${!operacaoCompleta ? "section-disabled" : ""}`}>
+          <section className={`form-section ${!cadastroPuxado && !operacaoCompleta ? "section-disabled" : ""}`}>
             <div className="section-title">Cliente</div>
             <div className="grid-row">
               <div className="field-group" style={{position: "relative", flex: 2}}>
@@ -1302,7 +1303,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
             </div>
           </section>
 
-          <section className={`form-section ${!dadosPessoaisSecaoPronta ? "section-disabled" : ""}`}>
+          <section className={`form-section ${!cadastroPuxado && !dadosPessoaisSecaoPronta ? "section-disabled" : ""}`}>
             <div className="section-title">Dados Pessoais</div>
             <div className="grid-row">
               <div className="field-group full-width">
@@ -1426,7 +1427,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
             </div>
           </section>
 
-          <section className={`form-section ${!dadosPessoaisCompletos ? "section-disabled" : ""}`}>
+          <section className={`form-section ${!cadastroPuxado && !dadosPessoaisCompletos ? "section-disabled" : ""}`}>
             <div className="section-title">Endereço</div>
             <div className="grid-row address-row-1">
               <div className="field-group xsmall">
@@ -1535,7 +1536,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
           </section>
 
           {(String(tipoOperacao) === "1" || String(tipoOperacao) === "4" || String(tipoOperacao) === "5") && (
-            <section className={`form-section ${!enderecoCompleto ? "section-disabled" : ""}`}>
+            <section className={`form-section ${!cadastroPuxado && !enderecoCompleto ? "section-disabled" : ""}`}>
               <div className="section-title">Dados da Simulação</div>
               {String(tipoOperacao) === "4" && (
               <div style={{background: '#3f3b6c', color: 'white', padding: '10px 20px', borderRadius: '6px', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '12px'}}>
@@ -1645,9 +1646,9 @@ export default function AdicionarContrato({ setPaginaAtual }) {
           )}
 
           {String(tipoOperacao) === "2" && (
-            <section className={`form-section ${!enderecoCompleto ? "section-disabled" : ""}`}>
+            <section className={`form-section ${!cadastroPuxado && !enderecoCompleto ? "section-disabled" : ""}`}>
               <div className="section-title">Dados da Simulação</div>
-              
+
               <div style={{display: 'flex', gap: '20px', marginBottom: '20px'}}>
                 <div style={{flex: 1}}>
                   <div className="subsection-title" style={{marginBottom: '15px'}}>Parcelas</div>
@@ -1829,9 +1830,9 @@ export default function AdicionarContrato({ setPaginaAtual }) {
              )}
 
            {String(tipoOperacao) === "3" && (
-            <section className={`form-section ${!enderecoCompleto ? "section-disabled" : ""}`}>
+            <section className={`form-section ${!cadastroPuxado && !enderecoCompleto ? "section-disabled" : ""}`}>
               <div className="section-title">Dados da Simulação</div>
-              
+
               <div style={{display: 'flex', gap: '20px', marginBottom: '20px', flexDirection: 'column'}}>
                 <div style={{flex: 1}}>
                   <div className="subsection-title" style={{marginBottom: '15px'}}>Parcelas</div>
@@ -2076,7 +2077,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                  </section>
              )}
 
-           <section className={`form-section ${!enderecoCompleto ? "section-disabled" : ""}`}>
+           <section className={`form-section ${!cadastroPuxado && !enderecoCompleto ? "section-disabled" : ""}`}>
             <div className="section-title">Dados Bancários</div>
             <div className="grid-row">
               <div className="field-group">

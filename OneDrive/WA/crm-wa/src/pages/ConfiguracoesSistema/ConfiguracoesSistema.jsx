@@ -26,7 +26,7 @@ export default function ConfiguracoesSistema() {
   const [mensagem, setMensagem] = useState('')
 
   const [modalAberto, setModalAberto] = useState(false)
-  const [modalForm, setModalForm] = useState({ nome: '', codigo: '' })
+  const [modalForm, setModalForm] = useState({ nome: '', codigo: '', tipo: '' })
   const [modalErro, setModalErro] = useState('')
   const [editandoId, setEditandoId] = useState(null)
   const [modalTipo, setModalTipo] = useState('banco')
@@ -86,7 +86,7 @@ export default function ConfiguracoesSistema() {
   function abrirModal(tipo, item) {
     setModalTipo(tipo)
     setEditandoId(item?.id || null)
-    setModalForm({ nome: item?.nome || '', codigo: item?.codigo || '' })
+    setModalForm({ nome: item?.nome || '', codigo: item?.codigo || '', tipo: item?.tipo || '' })
     setModalErro('')
     setModalAberto(true)
   }
@@ -94,7 +94,7 @@ export default function ConfiguracoesSistema() {
   function fecharModal() {
     setModalAberto(false)
     setEditandoId(null)
-    setModalForm({ nome: '', codigo: '' })
+    setModalForm({ nome: '', codigo: '', tipo: '' })
     setModalErro('')
   }
 
@@ -106,6 +106,13 @@ export default function ConfiguracoesSistema() {
     try {
       const payload = { nome: modalForm.nome.trim() }
       if (modalTipo === 'banco') payload.codigo = modalForm.codigo
+      if (modalTipo === 'convenio') {
+        if (!modalForm.tipo.trim()) {
+          setModalErro('Tipo é obrigatório')
+          return
+        }
+        payload.tipo = modalForm.tipo.trim()
+      }
 
       if (editandoId) {
         const table = modalTipo === 'banco' ? 'banco_operacao' : modalTipo === 'produto' ? 'tipo_operacao' : modalTipo === 'promotora' ? 'promotora' : 'convenio'
@@ -416,6 +423,24 @@ export default function ConfiguracoesSistema() {
                       className="config-input"
                       placeholder="Código do banco"
                     />
+                  </div>
+                )}
+                {modalTipo === 'convenio' && (
+                  <div className="config-field">
+                    <label>Tipo</label>
+                    <select
+                      value={modalForm.tipo}
+                      onChange={e => setModalForm({ ...modalForm, tipo: e.target.value })}
+                      className="config-input"
+                    >
+                      <option value="">Selecione o tipo</option>
+                      <option value="INSS">INSS</option>
+                      <option value="SIAPE Servidor">SIAPE Servidor</option>
+                      <option value="SIAPE Pensionista">SIAPE Pensionista</option>
+                      <option value="Estadual">Estadual</option>
+                      <option value="Municipal">Municipal</option>
+                      <option value="Outro">Outro</option>
+                    </select>
                   </div>
                 )}
               </div>

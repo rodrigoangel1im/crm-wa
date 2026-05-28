@@ -74,6 +74,21 @@
   border-top: 4px solid #3f3b6c;
 }
 
+.card-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #777;
+  font-weight: 600;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.card-divider {
+  color: #ccc;
+}
+
 .avisos-title-bar{
   padding: 6px;
 }

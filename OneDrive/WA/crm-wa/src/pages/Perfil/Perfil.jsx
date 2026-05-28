@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Users, ClipboardList, Shield, Settings, User, Target, Clock, Key } from 'lucide-react'
+import { Users, ClipboardList, Shield, Settings, User, Target, Clock, Key, RotateCw } from 'lucide-react'
 import './Perfil.css'
 import HorariosList from './HorariosList'
 import ModalFormUsuario from './ModalFormUsuario'
@@ -15,6 +15,7 @@ const RECURSOS = [
   { id: 'pagas-canceladas', nome: 'Esteira - Pagas/Canceladas' },
   { id: 'financeiro', nome: 'Financeiro' },
   { id: 'base-conhecimento', nome: 'Base de Conhecimento' },
+  { id: 'higienizacao', nome: 'Higienização' },
   { id: 'configuracoes', nome: 'Configurações' },
   { id: 'perfil', nome: 'Perfil' },
   { id: 'usuarios', nome: 'Usuários' },
@@ -66,6 +67,9 @@ export default function Perfil() {
   })
   const [erroModal, setErroModal] = useState('')
   const [modalImportarPonto, setModalImportarPonto] = useState(false)
+  const [resetSenhaLoading, setResetSenhaLoading] = useState(null)
+  const [senhaGerada, setSenhaGerada] = useState(null)
+  const [usuarioSenhaGerada, setUsuarioSenhaGerada] = useState(null)
 
   useEffect(() => {
     async function init() {
@@ -387,6 +391,35 @@ export default function Perfil() {
     }
   }
 
+  function gerarSenha() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$'
+    let senha = ''
+    for (let i = 0; i < 10; i++) {
+      senha += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    return senha
+  }
+
+  async function handleResetSenhaUsuario(usuario) {
+    if (!confirm(`Gerar nova senha para ${usuario.nome}?`)) return
+    setResetSenhaLoading(usuario.id)
+    try {
+      const novaSenha = gerarSenha()
+      const { data, error } = await supabase.rpc('admin_reset_password', {
+        p_usuario_id: usuario.id,
+        p_new_password: novaSenha,
+      })
+      if (error) throw error
+      setSenhaGerada(novaSenha)
+      setUsuarioSenhaGerada(usuario.nome)
+      await registrarLog('resetou_senha', `Redefiniu senha do usuário: ${usuario.nome}`)
+    } catch (err) {
+      alert('Erro ao redefinir senha: ' + err.message)
+    } finally {
+      setResetSenhaLoading(null)
+    }
+  }
+
   function abrirModalNovo() {
     setEditandoUsuario(null)
     setFormUsuario({
@@ -491,6 +524,14 @@ export default function Perfil() {
                                 <button className="btn-icon" title="Editar" onClick={() => abrirModalEditar(u)}>✏️</button>
                                 <button className="btn-icon" title={u.ativo ? 'Desativar' : 'Ativar'} onClick={() => toggleAtivo(u)}>
                                   {u.ativo ? '🚫' : '✅'}
+                                </button>
+                                <button
+                                  className="btn-icon"
+                                  title="Redefinir senha"
+                                  onClick={() => handleResetSenhaUsuario(u)}
+                                  disabled={resetSenhaLoading === u.id}
+                                >
+                                  <RotateCw size={14} className={resetSenhaLoading === u.id ? 'spin' : ''} />
                                 </button>
                               </div>
                             </td>
@@ -753,6 +794,37 @@ export default function Perfil() {
 
       {modalImportarPonto && (
         <ModalImportarPonto onClose={() => setModalImportarPonto(false)} />
+      )}
+
+      {senhaGerada && (
+        <div className="modal-overlay" onClick={() => { setSenhaGerada(null); setUsuarioSenhaGerada(null) }}>
+          <div className="modal-container" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <div className="modal-header">Senha Redefinida</div>
+            <div className="modal-body" style={{ padding: 24, textAlign: 'center' }}>
+              <p style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>
+                Nova senha para <strong>{usuarioSenhaGerada}</strong>:
+              </p>
+              <div
+                className="senha-gerada-box"
+                onClick={() => { navigator.clipboard.writeText(senhaGerada); alert('Senha copiada!') }}
+                title="Clique para copiar"
+              >
+                {senhaGerada}
+              </div>
+              <p style={{ fontSize: 12, color: '#999', marginTop: 12 }}>
+                Clique na senha acima para copiar
+              </p>
+            </div>
+            <div className="modal-footer" style={{ padding: '12px 20px', display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button className="btn-primary" onClick={() => { navigator.clipboard.writeText(senhaGerada); alert('Senha copiada!') }}>
+                Copiar Senha
+              </button>
+              <button className="btn-cancel" onClick={() => { setSenhaGerada(null); setUsuarioSenhaGerada(null) }}>
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

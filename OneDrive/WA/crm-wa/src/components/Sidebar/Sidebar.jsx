@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { canAccess } from '../../lib/permissoes'
-import { Home, FileText, Calculator, ClipboardList, User, LogOut, Settings, DollarSign, Book } from 'lucide-react'
+import { Home, FileText, Calculator, ClipboardList, User, LogOut, Settings, DollarSign, Book, Sparkles } from 'lucide-react'
 import './Sidebar.css'
 
 export default function Sidebar({ paginaAtual, setPaginaAtual, collapsed, onToggleCollapse }) {
@@ -120,6 +120,16 @@ export default function Sidebar({ paginaAtual, setPaginaAtual, collapsed, onTogg
           >
             <Book size={20} className="icon" />
             <span className="nav-text">Base de Conhecimento</span>
+          </a>
+        )}
+        {canAccess('higienizacao') && (
+          <a
+            href="#"
+            className={paginaAtual === 'higienizacao' ? 'active' : ''}
+            onClick={(e) => { e.preventDefault(); setPaginaAtual('higienizacao') }}
+          >
+            <Sparkles size={20} className="icon" />
+            <span className="nav-text">Higienização</span>
           </a>
         )}
         {canAccess('configuracoes') && (
