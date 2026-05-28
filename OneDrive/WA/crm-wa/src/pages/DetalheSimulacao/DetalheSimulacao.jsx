@@ -13,8 +13,10 @@ export default function DetalheSimulacao({ setPaginaAtual }) {
   const [propostas, setPropostas] = useState([])
   const [modalSucesso, setModalSucesso] = useState(null)
   const [selectedStatusId, setSelectedStatusId] = useState('')
-  const [alterandoStatus, setAlterandoStatus] = useState(false)
   const [statusList, setStatusList] = useState([])
+  const [abaAtiva, setAbaAtiva] = useState('dados')
+  const [modalConfirmDelete, setModalConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const [bancos, setBancos] = useState([])
   const [operacoes, setOperacoes] = useState([])
@@ -259,6 +261,32 @@ export default function DetalheSimulacao({ setPaginaAtual }) {
     }
   }
 
+  async function apagarSimulacao() {
+    if (!sim?.id) return
+    setDeleting(true)
+    try {
+      await supabase.from('proposta_simulacao').delete().eq('solicitacao_id', sim.id)
+      await supabase.from('contratos_simulacao').delete().eq('solicitacao_id', sim.id)
+      await supabase.from('matricula_simulacao').delete().eq('solicitacao_id', sim.id)
+      await supabase.from('informacoes_pessoais_simulacao').delete().eq('solicitacao_id', sim.id)
+      await supabase.from('solicitacao_simulacao_arquivo').delete().eq('solicitacao_id', sim.id)
+
+      const { error } = await supabase
+        .from('solicitacao_simulacao')
+        .delete()
+        .eq('id', sim.id)
+      if (error) throw error
+
+      setModalConfirmDelete(false)
+      voltar()
+    } catch (err) {
+      console.error('Erro ao apagar simulação:', err)
+      alert('Erro ao apagar: ' + err.message)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   async function handleOk() {
     if (selectedStatusId) {
       await supabase
@@ -285,6 +313,23 @@ export default function DetalheSimulacao({ setPaginaAtual }) {
       </header>
 
       <div className="form-content" style={{ width: '95%', maxWidth: '900px' }}>
+        <div className="tab-bar" style={{ marginBottom: 16 }}>
+          <button
+            className={`tab-btn ${abaAtiva === 'dados' ? 'tab-ativa' : ''}`}
+            onClick={() => setAbaAtiva('dados')}
+          >
+            Dados
+          </button>
+          <button
+            className={`tab-btn ${abaAtiva === 'config' ? 'tab-ativa' : ''}`}
+            onClick={() => setAbaAtiva('config')}
+          >
+            Configuração
+          </button>
+        </div>
+
+        {abaAtiva === 'dados' && (
+        <>
         <div className="ds-section">
           <h2 className="ds-section-title">Dados do Cliente</h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -470,7 +515,70 @@ export default function DetalheSimulacao({ setPaginaAtual }) {
           </button>
           )}
         </div>
+      </>
+      )}
+
+      {abaAtiva === 'config' && (
+        <div className="ds-section">
+          <h2 className="ds-section-title">Configuração</h2>
+          <div style={{ padding: '16px 0' }}>
+            <p style={{ fontSize: 14, color: '#555', marginBottom: 20 }}>
+              Excluir a simulação <strong>#{sim.id}</strong> e todos os seus dados.
+              Esta ação não pode ser desfeita.
+            </p>
+            <button
+              className="btn-deletar-proposta"
+              onClick={() => setModalConfirmDelete(true)}
+              disabled={deleting}
+              style={{
+                backgroundColor: '#dc3545',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: 5,
+                fontSize: 13,
+                fontWeight: 'bold',
+                cursor: deleting ? 'not-allowed' : 'pointer',
+                opacity: deleting ? 0.6 : 1
+              }}
+            >
+              {deleting ? 'Excluindo...' : 'Apagar Simulação'}
+            </button>
+          </div>
+        </div>
+      )}
       </div>
+
+      {modalConfirmDelete && (
+        <div className="modal-overlay" onClick={() => setModalConfirmDelete(false)}>
+          <div className="sim-modal-container" onClick={e => e.stopPropagation()} style={{ maxWidth: 400, width: '90%' }}>
+            <div className="modal-header">
+              <h2>Apagar Simulação</h2>
+            </div>
+            <div className="sim-modal-body" style={{ textAlign: 'center', padding: '30px 20px' }}>
+              <p style={{ fontSize: 16, marginBottom: 12 }}>
+                Tem certeza que deseja apagar a simulação <strong>#{sim.id}</strong>?
+              </p>
+              <p style={{ fontSize: 14, color: '#999' }}>Esta ação não pode ser desfeita.</p>
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button
+                className="btn-primary"
+                onClick={apagarSimulacao}
+                style={{ backgroundColor: '#dc3545' }}
+              >
+                APAGAR
+              </button>
+              <button
+                className="btn-voltar-modal"
+                onClick={() => setModalConfirmDelete(false)}
+              >
+                CANCELAR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modalSucesso && (
         <div className="modal-overlay" onClick={() => setModalSucesso(null)}>

@@ -54,6 +54,7 @@ export default function Sidebar({ paginaAtual, setPaginaAtual, collapsed, onTogg
           </a>
         )}
 
+
         {(canAccess('esteira-simulacoes') || canAccess('propostas') || canAccess('pagas-canceladas')) && (
           <div className="nav-group">
             <a
