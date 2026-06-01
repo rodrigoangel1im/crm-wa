@@ -1464,6 +1464,11 @@ export default function StatusProposta({ setPaginaAtual }) {
             )}
           {abaAtiva === 'config' && (
             <div className="config-tab">
+              {mensagem.texto && (
+                <div className={`mensagem ${mensagem.tipo}`} style={{ width: '100%', textAlign: 'center', marginBottom: '15px' }}>
+                  {mensagem.texto}
+                </div>
+              )}
               <section className="secao-container">
                 <header className="secao-header">Configuração</header>
                 <div style={{ padding: '8px 12px' }}>
