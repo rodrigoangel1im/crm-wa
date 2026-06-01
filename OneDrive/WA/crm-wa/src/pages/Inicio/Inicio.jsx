@@ -7,10 +7,40 @@ export default function Inicio() {
   const nomeCompleto = localStorage.getItem('usuario_nome_crmwa') || ''
   const primeiroNome = nomeCompleto.split(' ')[0] || ''
   const [cards, setCards] = useState(null)
+  const [periodo, setPeriodo] = useState('todos')
 
   useEffect(() => {
     carregarCards()
-  }, [])
+  }, [periodo])
+
+  function getDateRange() {
+    const now = new Date()
+    const ano = now.getFullYear()
+    const mes = now.getMonth()
+    const dia = now.getDate()
+
+    if (periodo === 'dia') {
+      const start = new Date(ano, mes, dia)
+      const end = new Date(ano, mes, dia + 1)
+      return { start: start.toISOString(), end: end.toISOString() }
+    }
+
+    if (periodo === 'semana') {
+      const diaSemana = now.getDay()
+      const diff = diaSemana === 0 ? -6 : 1 - diaSemana
+      const start = new Date(ano, mes, dia + diff)
+      const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7)
+      return { start: start.toISOString(), end: end.toISOString() }
+    }
+
+    if (periodo === 'mes') {
+      const start = new Date(ano, mes, 1)
+      const end = new Date(ano, mes + 1, 1)
+      return { start: start.toISOString(), end: end.toISOString() }
+    }
+
+    return null
+  }
 
   async function carregarCards() {
     const { data: statuses } = await supabase
@@ -33,12 +63,22 @@ export default function Inicio() {
     const pagosId = findId('integrado')
     const reprovadosId = findId('reprovado')
 
+    const dateRange = getDateRange()
+
     const contarIds = async (ids) => {
       if (!ids || ids.length === 0) return { count: 0, valor: 0 }
-      const { data } = await supabase
+      let query = supabase
         .from('proposta')
         .select('valor_liberado')
         .in('proposta_status_id', ids)
+
+      if (dateRange) {
+        query = query
+          .gte('atualizado_em', dateRange.start)
+          .lt('atualizado_em', dateRange.end)
+      }
+
+      const { data } = await query
       if (!data) return { count: 0, valor: 0 }
       return {
         count: data.length,
@@ -63,6 +103,24 @@ export default function Inicio() {
       </header>
       <main className="main-content">
         <div className="content-card">
+          <div className="periodo-filtro" style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
+            <span style={{ fontSize: 14, color: '#555' }}>Filtrar por:</span>
+            {['todos', 'dia', 'semana', 'mes'].map(p => (
+              <button
+                key={p}
+                onClick={() => setPeriodo(p)}
+                style={{
+                  padding: '6px 16px', borderRadius: 6, fontSize: 13, cursor: 'pointer',
+                  border: periodo === p ? '2px solid #3f3b6c' : '1px solid #ccc',
+                  background: periodo === p ? '#3f3b6c' : '#fff',
+                  color: periodo === p ? '#fff' : '#333',
+                  fontWeight: periodo === p ? 'bold' : 'normal',
+                }}
+              >
+                {p === 'todos' ? 'Todos' : p === 'dia' ? 'Hoje' : p === 'semana' ? 'Esta Semana' : 'Este Mês'}
+              </button>
+            ))}
+          </div>
           <div className="cards-section">
             <div className="cards-grid">
               <div className="card-item card-analise">

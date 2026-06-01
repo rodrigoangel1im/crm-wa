@@ -8,6 +8,8 @@ export default function EsteiraSimulacoes({ setPaginaAtual }) {
   const [loading, setLoading] = useState(true)
   const [pagina, setPagina] = useState(1)
   const [totalPaginas, setTotalPaginas] = useState(1)
+  const [filtroTipo, setFiltroTipo] = useState('Todos')
+  const [filtroValor, setFiltroValor] = useState('')
   const ITENS_POR_PAGINA = 20
 
   const perfil = localStorage.getItem('usuario_perfil_crmwa') || ''
@@ -25,13 +27,24 @@ export default function EsteiraSimulacoes({ setPaginaAtual }) {
   }
 
   async function queryFallback(start, end) {
-    const { data, error, count } = await supabase
+    let q = supabase
       .from('solicitacao_simulacao')
       .select(`
         id, cpf, status, status_id, criado_em, usuario_id,
         usuario:usuario_id (nome),
         convenio:convenio_id (nome)
       `, { count: 'exact' })
+
+    if (filtroValor.trim()) {
+      if (filtroTipo === 'CPF') {
+        const cpfLimpo = filtroValor.replace(/\D/g, '')
+        q = q.ilike('cpf', `%${cpfLimpo}%`)
+      } else if (filtroTipo === 'Status') {
+        q = q.ilike('status', `%${filtroValor.trim()}%`)
+      }
+    }
+
+    const { data, error, count } = await q
       .order('atualizado_em', { ascending: true, nullsFirst: false })
       .range(start, end)
     if (error || !data) return null
@@ -48,7 +61,7 @@ export default function EsteiraSimulacoes({ setPaginaAtual }) {
       const start = (page - 1) * ITENS_POR_PAGINA
       const end = start + ITENS_POR_PAGINA - 1
 
-      const { data, error, count } = await supabase
+      let query = supabase
         .from('solicitacao_simulacao')
         .select(`
           id,
@@ -61,6 +74,17 @@ export default function EsteiraSimulacoes({ setPaginaAtual }) {
           usuario:usuario_id (nome),
           convenio:convenio_id (nome)
         `, { count: 'exact' })
+
+      if (filtroValor.trim()) {
+        if (filtroTipo === 'CPF') {
+          const cpfLimpo = filtroValor.replace(/\D/g, '')
+          query = query.ilike('cpf', `%${cpfLimpo}%`)
+        } else if (filtroTipo === 'Status') {
+          query = query.ilike('status', `%${filtroValor.trim()}%`)
+        }
+      }
+
+      const { data, error, count } = await query
         .order('atualizado_em', { ascending: true, nullsFirst: false })
         .range(start, end)
 
@@ -88,9 +112,14 @@ export default function EsteiraSimulacoes({ setPaginaAtual }) {
         })
       }
 
-      const formatadas = dados.data.map(item => {
-        const criado = new Date(new Date(item.criado_em).getTime() - 3 * 60 * 60 * 1000)
-        const partesData = criado.toISOString().split('T')
+      let formatadas = dados.data.map(item => {
+        const raw = item.criado_em
+        const criado = new Date(raw ? (raw.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(raw) ? raw : raw + 'Z') : undefined)
+        const ano = criado.getFullYear()
+        const mes = String(criado.getMonth() + 1).padStart(2, '0')
+        const dia = String(criado.getDate()).padStart(2, '0')
+        const hora = String(criado.getHours()).padStart(2, '0')
+        const minuto = String(criado.getMinutes()).padStart(2, '0')
         return {
           id: item.id,
           nome: nomePorSolicitacao[item.id] || 'N/A',
@@ -99,11 +128,16 @@ export default function EsteiraSimulacoes({ setPaginaAtual }) {
           status_cor: item.status_simulacao?.cor || '',
           convenio: item.convenio?.nome || 'N/A',
           usuario: item.usuario?.nome || 'N/A',
-          data: partesData[0],
-          hora: partesData[1]?.substring(0, 5) || '',
+          data: `${ano}-${mes}-${dia}`,
+          hora: `${hora}:${minuto}`,
           criado_em: item.criado_em,
         }
       })
+
+      if (filtroTipo === 'Nome' && filtroValor.trim()) {
+        const termo = filtroValor.trim().toLowerCase()
+        formatadas = formatadas.filter(s => s.nome.toLowerCase().includes(termo))
+      }
 
       setSimulacoes(formatadas)
       setTotalPaginas(dados.totalPaginas)
@@ -141,7 +175,7 @@ export default function EsteiraSimulacoes({ setPaginaAtual }) {
         <div className="filtros-wrapper" style={{ display: 'flex', gap: '10px', marginBottom: '15px', alignItems: 'flex-end' }}>
           <div className="campo-grupo">
             <label>Pesquisar por:</label>
-            <select className="input-estilizado" style={{ width: '200px' }}>
+            <select className="input-estilizado" style={{ width: '200px' }} value={filtroTipo} onChange={e => { setFiltroTipo(e.target.value); setPagina(1); carregarSimulacoes(1) }}>
               <option>Todos</option>
               <option>Nome</option>
               <option>CPF</option>
@@ -150,7 +184,8 @@ export default function EsteiraSimulacoes({ setPaginaAtual }) {
           </div>
           <div className="campo-grupo" style={{ flexGrow: 1 }}>
             <label>Buscar:</label>
-            <input type="text" className="input-estilizado" placeholder="Digite para pesquisar..." />
+            <input type="text" className="input-estilizado" placeholder="Digite para pesquisar..." value={filtroValor} onChange={e => setFiltroValor(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { setPagina(1); carregarSimulacoes(1) } }} />
+            <button className="btn-refresh" onClick={() => { setPagina(1); carregarSimulacoes(1) }} style={{ marginLeft: 4 }}>Buscar</button>
           </div>
           <button className="btn-refresh" onClick={() => { setPagina(1); carregarSimulacoes(1) }} title="Atualizar lista">
             ↻

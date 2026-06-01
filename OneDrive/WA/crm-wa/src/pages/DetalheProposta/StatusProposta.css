@@ -32,7 +32,7 @@
   gap: 0px;
 }
 
-.secao-container {
+.form-container .secao-container {
   background: #ffffff;
   border-radius: 8px;
   padding: 20px;
@@ -43,7 +43,7 @@
   max-width: 800px;
 }
 
-.secao-header {
+.form-container .secao-header {
   background-color: #3f3b6c;
   color: white;
   padding: 8px 15px;
@@ -601,11 +601,11 @@
   cursor: pointer;
 }
 
-.campo-lateral {
+.form-container .campo-lateral {
   margin-bottom: 15px;
 }
 
-.campo-lateral label {
+.form-container .campo-lateral label {
   font-size: 11px;
   font-weight: bold;
   color: #333;
@@ -613,8 +613,8 @@
   display: block;
 }
 
-.campo-lateral input,
-.campo-lateral select {
+.form-container .campo-lateral input,
+.form-container .campo-lateral select {
   width: 100%;
   height: 30px;
   box-sizing: border-box;
@@ -624,14 +624,14 @@
   font-family: Verdana, Arial, Helvetica, sans-serif;
 }
 
-.campo-lateral input:focus,
-.campo-lateral select:focus {
+.form-container .campo-lateral input:focus,
+.form-container .campo-lateral select:focus {
   outline: none;
   border-color: #b5b5b5;
   box-shadow: 0 0 0 2px rgba(180,180,180,0.2);
 }
 
-.campo-lateral .imask-input {
+.form-container .campo-lateral .imask-input {
   width: 100%;
   height: 30px;
   box-sizing: border-box;
@@ -650,7 +650,7 @@
   cursor: pointer;
   font-weight: bold;
   width: 100%;
-  margin-top: 10px;
+  margin-top: 20px;
   transition: opacity 0.2s;
 }
 
@@ -682,7 +682,7 @@
   margin-bottom: 0;
 }
 
-.documentos-tab {
+.form-container .documentos-tab {
   padding: 0px;
   grid-column: 1 / -1;
   width: 100%;
@@ -771,8 +771,14 @@
   cursor: default;
 }
 
-.config-tab {
+.form-container .config-tab {
   width: 100%;
-  padding: 0px;
+  padding: 13px 18px;
   margin: -14px 0 -1px -20px;
 }
+
+.form-container .config-tab .secao-container {
+  width: 793px;
+}
+
+

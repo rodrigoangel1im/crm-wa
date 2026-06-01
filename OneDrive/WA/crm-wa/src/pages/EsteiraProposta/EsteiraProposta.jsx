@@ -189,9 +189,13 @@ export default function EsteiraProposta({ setPaginaAtual }) {
 
       function formatarBrasilia(iso) {
         if (!iso) return { data: '', hora: '' }
-        const d = new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000)
-        const partes = d.toISOString().split('T')
-        return { data: partes[0], hora: partes[1]?.substring(0, 5) || '' }
+        const d = new Date(iso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(iso) ? iso : iso + 'Z')
+        const ano = d.getFullYear()
+        const mes = String(d.getMonth() + 1).padStart(2, '0')
+        const dia = String(d.getDate()).padStart(2, '0')
+        const hora = String(d.getHours()).padStart(2, '0')
+        const minuto = String(d.getMinutes()).padStart(2, '0')
+        return { data: `${ano}-${mes}-${dia}`, hora: `${hora}:${minuto}` }
       }
 
       const propostasFormatadas = data.map(item => {

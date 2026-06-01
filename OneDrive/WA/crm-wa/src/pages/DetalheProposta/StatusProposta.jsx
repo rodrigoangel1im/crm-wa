@@ -124,6 +124,8 @@ export default function StatusProposta({ setPaginaAtual }) {
   const [modalRedigirSucesso, setModalRedigirSucesso] = useState(false)
   const [detalheStatusId, setDetalheStatusId] = useState('')
   const [detalhesStatus, setDetalhesStatus] = useState([])
+  const [usuarioDigitadorId, setUsuarioDigitadorId] = useState('')
+  const [listaUsuarios, setListaUsuarios] = useState([])
 
   const [abaAtiva, setAbaAtiva] = useState('dados')
   const [documentos, setDocumentos] = useState([])
@@ -255,6 +257,13 @@ export default function StatusProposta({ setPaginaAtual }) {
         if (produtosRes.data) setTiposProduto(produtosRes.data)
         if (usuarioRes.data && usuarioRes.data.length > 0) setUsuarioId(usuarioRes.data[0].id)
         if (statusRes.data) setListaStatus(statusRes.data)
+
+        const { data: usuariosData } = await supabase
+          .from('usuario')
+          .select('id, nome')
+          .eq('ativo', true)
+          .order('nome')
+        if (usuariosData) setListaUsuarios(usuariosData)
       } catch (error) {
         console.error('Erro ao carregar dados:', error)
       }
@@ -647,6 +656,7 @@ export default function StatusProposta({ setPaginaAtual }) {
       }
 
       if (proposta.proposta_status_id) { setPropostaStatusId(String(proposta.proposta_status_id)); setPropostaStatusIdOriginal(String(proposta.proposta_status_id)) }
+      if (proposta.usuario_digitador_id) setUsuarioDigitadorId(String(proposta.usuario_digitador_id))
       setDetalheStatusId('')
 
       await carregarValoresReais()
@@ -793,6 +803,28 @@ export default function StatusProposta({ setPaginaAtual }) {
     } catch (error) {
       console.error('Erro ao redigitar:', error)
       setMensagem({ tipo: 'erro', texto: 'Erro ao redigitar: ' + error.message })
+    }
+  }
+
+  async function salvarDigitador() {
+    try {
+      const propostaStr = localStorage.getItem('propostaSelecionada_crmwa')
+      if (!propostaStr) return
+      const proposta = JSON.parse(propostaStr)
+      if (!proposta.id) return
+
+      const { error } = await supabase
+        .from('proposta')
+        .update({ usuario_digitador_id: parseInt(usuarioDigitadorId) })
+        .eq('id', proposta.id)
+
+      if (error) throw error
+
+      setMensagem({ tipo: 'sucesso', texto: 'Digitador atualizado com sucesso!' })
+      setTimeout(() => setMensagem({ tipo: '', texto: '' }), 3000)
+    } catch (error) {
+      console.error('Erro ao salvar digitador:', error)
+      setMensagem({ tipo: 'erro', texto: 'Erro ao salvar digitador: ' + error.message })
     }
   }
 
@@ -1127,6 +1159,10 @@ export default function StatusProposta({ setPaginaAtual }) {
                   <label>PRAZO:</label>
                   <select value={prazo} disabled>
                     <option value="">Selecione</option>
+                    {prazo && ![120, 108, 96, 84, 72, 60].includes(Number(prazo)) && (
+                      <option value={prazo}>{prazo}</option>
+                    )}
+                    <option value="120">120</option>
                     <option value="108">108</option>
                     <option value="96">96</option>
                     <option value="84">84</option>
@@ -1198,6 +1234,10 @@ export default function StatusProposta({ setPaginaAtual }) {
                       <label>PRAZO:</label>
                       <select value={prazo} disabled>
                         <option value="">Selecione</option>
+                        {prazo && ![120, 108, 96, 84, 72, 60].includes(Number(prazo)) && (
+                          <option value={prazo}>{prazo}</option>
+                        )}
+                        <option value="120">120</option>
                         <option value="108">108</option>
                         <option value="96">96</option>
                         <option value="84">84</option>
@@ -1287,6 +1327,10 @@ export default function StatusProposta({ setPaginaAtual }) {
                       <label>PRAZO:</label>
                       <select value={prazo} disabled>
                         <option value="">Selecione</option>
+                        {prazo && ![120, 108, 96, 84, 72, 60].includes(Number(prazo)) && (
+                          <option value={prazo}>{prazo}</option>
+                        )}
+                        <option value="120">120</option>
                         <option value="108">108</option>
                         <option value="96">96</option>
                         <option value="84">84</option>
@@ -1365,7 +1409,7 @@ export default function StatusProposta({ setPaginaAtual }) {
             <div className="documentos-tab">
             <section className="secao-container">
               <header className="secao-header">Documentos</header>
-              <div style={{ padding: '8px 12px' }}>
+              <div style={{ padding: '15px' }}>
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '10px' }}>
                   <select value={tipoDocSelecionado} onChange={(e) => setTipoDocSelecionado(e.target.value)} style={{ flex: 1, height: '28px', fontSize: '12px', padding: '0 6px' }}>
                     <option value="">Selecione o tipo de documento</option>
@@ -1422,7 +1466,28 @@ export default function StatusProposta({ setPaginaAtual }) {
             <div className="config-tab">
               <section className="secao-container">
                 <header className="secao-header">Configuração</header>
-                <div style={{ padding: '15px' }}>
+                <div style={{ padding: '8px 12px' }}>
+                  <div className="campo-lateral" style={{ marginBottom: '10px' }}>
+                    <label style={{ fontSize: '10px', marginBottom: '3px' }}>USUÁRIO DIGITADOR:</label>
+                    <select
+                      value={usuarioDigitadorId}
+                      onChange={(e) => setUsuarioDigitadorId(e.target.value)}
+                       style={{ width: '50%', height: '28px', padding: '2px 4px', fontSize: '12px' }}
+                    >
+                      <option value="">Selecione um usuário</option>
+                      {listaUsuarios.map((u) => (
+                        <option key={u.id} value={u.id}>{u.nome}</option>
+                      ))}
+                    </select>
+                    <button
+                      className="btn-salvar-lateral"
+                      onClick={salvarDigitador}
+                      style={{ width: '21%', padding: '8px 12px', fontSize: '11px' }}
+                      disabled={!usuarioDigitadorId}
+                    >
+                      Salvar Digitador
+                    </button>
+                  </div>
                   {localStorage.getItem('usuario_admin_crmwa') === 'true' && (
                     <button
                       className="btn-deletar-proposta"
