@@ -325,7 +325,7 @@ export default function EsteiraProposta({ setPaginaAtual }) {
 
     const { error } = await supabase
       .from('proposta')
-      .update({ proposta_status_id: aguardaDigitacao.id })
+      .update({ proposta_status_id: aguardaDigitacao.id, atualizado_em: new Date().toISOString() })
       .eq('id', modalDocProposta.id)
 
     if (error) {

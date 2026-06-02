@@ -454,6 +454,7 @@ export default function StatusProposta({ setPaginaAtual }) {
       const { error } = await supabase
         .from('proposta')
         .update({
+          atualizado_em: new Date().toISOString(),
           valor_liberado: valorRealLiberado ? parseFloat(valorRealLiberado.replace(/[^\d,]/g, '').replace(',', '.')) : undefined,
           numero_parcelas: numeroParcelasReal ? parseInt(numeroParcelasReal) : undefined,
           valor_parcela: parcelaReal ? parseFloat(parcelaReal.replace(/[^\d,]/g, '').replace(',', '.')) : undefined,
@@ -490,6 +491,35 @@ export default function StatusProposta({ setPaginaAtual }) {
         setTps(tpsCorrigida)
         setTpsCorrigida('')
       }
+
+      const statusIntegrado = listaStatus.find(s => s.nome.toLowerCase().includes('integrado'))
+      if (statusIntegrado && String(propostaStatusId) === String(statusIntegrado.id)) {
+        try {
+          const tel = '55' + (ddd || '').replace(/\D/g, '') + (telefone || '').replace(/\D/g, '')
+          if (tel.length >= 12) {
+            const valor = valorRealLiberado || valorLiberado || ''
+            const dataAtual = new Date().toLocaleDateString('pt-BR')
+            await fetch(import.meta.env.VITE_API_VAIVENDA_URL + '/messages', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + import.meta.env.VITE_API_VAIVENDA_TOKEN
+              },
+              body: JSON.stringify({
+                whatsappId: import.meta.env.VITE_WHATSAPP_ID,
+                messages: [{
+                  number: tel,
+                  name: nomeCompleto || 'Cliente',
+                  body: `Olá ${nomeCompleto || 'Cliente'}, sua proposta foi integrada com sucesso!`
+                }]
+              })
+            })
+          }
+        } catch (e) {
+          console.error('Erro ao notificar integração via WhatsApp:', e)
+        }
+      }
+
       setModalSucesso(true)
       liberarLock(proposta.id)
     } catch (error) {
@@ -815,7 +845,7 @@ export default function StatusProposta({ setPaginaAtual }) {
 
       const { error } = await supabase
         .from('proposta')
-        .update({ usuario_digitador_id: parseInt(usuarioDigitadorId) })
+        .update({ usuario_digitador_id: parseInt(usuarioDigitadorId), atualizado_em: new Date().toISOString() })
         .eq('id', proposta.id)
 
       if (error) throw error
