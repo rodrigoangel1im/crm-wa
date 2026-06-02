@@ -1,9 +1,9 @@
 import LoadingBars from '../../components/LoadingBars/LoadingBars'
-import './EsteiraSimulacoes.css'
+import '../EsteiraSimulacoes/EsteiraSimulacoes.css'
 import { supabase } from '../../lib/supabase'
 import { useState, useEffect } from 'react'
 
-export default function EsteiraSimulacoes({ setPaginaAtual }) {
+export default function AguardandoSimulacao({ setPaginaAtual }) {
   const [simulacoes, setSimulacoes] = useState([])
   const [loading, setLoading] = useState(true)
   const [pagina, setPagina] = useState(1)
@@ -27,17 +27,20 @@ export default function EsteiraSimulacoes({ setPaginaAtual }) {
   }
 
   async function queryFallback(start, end) {
-      let q = supabase
+    let q = supabase
       .from('solicitacao_simulacao')
       .select(`
         id, cpf, status, status_id, criado_em, usuario_id,
         usuario:usuario_id (nome),
         convenio:convenio_id (nome)
       `, { count: 'exact' })
+
     if (filtroValor.trim()) {
       if (filtroTipo === 'CPF') {
         const cpfLimpo = filtroValor.replace(/\D/g, '')
         q = q.ilike('cpf', `%${cpfLimpo}%`)
+      } else if (filtroTipo === 'Status') {
+        q = q.ilike('status', `%${filtroValor.trim()}%`)
       }
     }
 
@@ -71,10 +74,13 @@ export default function EsteiraSimulacoes({ setPaginaAtual }) {
           usuario:usuario_id (nome),
           convenio:convenio_id (nome)
         `, { count: 'exact' })
+
       if (filtroValor.trim()) {
         if (filtroTipo === 'CPF') {
           const cpfLimpo = filtroValor.replace(/\D/g, '')
           query = query.ilike('cpf', `%${cpfLimpo}%`)
+        } else if (filtroTipo === 'Status') {
+          query = query.ilike('status', `%${filtroValor.trim()}%`)
         }
       }
 
@@ -135,7 +141,7 @@ export default function EsteiraSimulacoes({ setPaginaAtual }) {
 
       formatadas = formatadas.filter(s => {
         const nome = (s.status || '').toLowerCase()
-        return nome === 'simulado' || nome === 'cancelado'
+        return nome !== 'simulado' && nome !== 'cancelado'
       })
 
       setSimulacoes(formatadas)
@@ -164,12 +170,12 @@ export default function EsteiraSimulacoes({ setPaginaAtual }) {
   return (
     <div className="form-container">
       <header className="form-header">
-        <h1>Simulados / Cancelados</h1>
-        <p className="header-subtitle">Simulações com status Simulado ou Cancelado</p>
+        <h1>Aguardando Simulação</h1>
+        <p className="header-subtitle">Simulações pendentes, em análise, aprovadas e reprovadas</p>
       </header>
 
       <div className="form-content" style={{ width: '95%', maxWidth: '1500px' }}>
-        <div className="status-badge">Simulados / Cancelados</div>
+        <div className="status-badge">Aguardando Simulação</div>
 
         <div className="filtros-wrapper" style={{ display: 'flex', gap: '10px', marginBottom: '15px', alignItems: 'flex-end' }}>
           <div className="campo-grupo">
@@ -178,6 +184,7 @@ export default function EsteiraSimulacoes({ setPaginaAtual }) {
               <option>Todos</option>
               <option>Nome</option>
               <option>CPF</option>
+              <option>Status</option>
             </select>
           </div>
           <div className="campo-grupo" style={{ flex: '0 0 300px' }}>

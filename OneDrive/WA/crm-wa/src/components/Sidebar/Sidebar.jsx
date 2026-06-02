@@ -59,7 +59,7 @@ export default function Sidebar({ paginaAtual, setPaginaAtual, collapsed, onTogg
           <div className="nav-group">
             <a
               href="#"
-              className={`${paginaAtual === 'esteira-proposta' || paginaAtual === 'esteira-pagas-canceladas' || paginaAtual === 'esteira-simulacoes' ? 'active' : ''}`}
+              className={`${paginaAtual === 'esteira-proposta' || paginaAtual === 'esteira-pagas-canceladas' || paginaAtual === 'esteira-simulacoes' || paginaAtual === 'aguardando-simulacao' ? 'active' : ''}`}
               onClick={(e) => {
                 e.preventDefault()
                 setEsteiraOpen(!esteiraOpen)
@@ -74,10 +74,19 @@ export default function Sidebar({ paginaAtual, setPaginaAtual, collapsed, onTogg
                 {canAccess('esteira-simulacoes') && (
                   <a
                     href="#"
+                    className={paginaAtual === 'aguardando-simulacao' ? 'active' : ''}
+                    onClick={(e) => { e.preventDefault(); setPaginaAtual('aguardando-simulacao') }}
+                  >
+                    <span className="nav-text">Aguardando simulação</span>
+                  </a>
+                )}
+                {canAccess('esteira-simulacoes') && (
+                  <a
+                    href="#"
                     className={paginaAtual === 'esteira-simulacoes' ? 'active' : ''}
                     onClick={(e) => { e.preventDefault(); setPaginaAtual('esteira-simulacoes') }}
                   >
-                    <span className="nav-text">Simulações</span>
+                    <span className="nav-text">Simulados / Cancelados</span>
                   </a>
                 )}
                 {canAccess('propostas') && (

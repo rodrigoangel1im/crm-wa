@@ -7,6 +7,7 @@ import Simulacoes from './pages/Simulacoes/Simulacoes'
 import EsteiraProposta from './pages/EsteiraProposta/EsteiraProposta'
 import PagasCanceladas from './pages/PagasCanceladas/PagasCanceladas'
 import EsteiraSimulacoes from './pages/EsteiraSimulacoes/EsteiraSimulacoes'
+import AguardandoSimulacao from './pages/AguardandoSimulacao/AguardandoSimulacao'
 import DetalheSimulacao from './pages/DetalheSimulacao/DetalheSimulacao'
 import DetalheProposta from './pages/DetalheProposta/DetalheProposta'
 import StatusProposta from './pages/DetalheProposta/StatusProposta'
@@ -87,6 +88,7 @@ export default function App() {
           {paginaAtual === 'esteira-proposta' && <EsteiraProposta setPaginaAtual={setPaginaAtual} />}
           {paginaAtual === 'esteira-pagas-canceladas' && <PagasCanceladas setPaginaAtual={setPaginaAtual} />}
           {paginaAtual === 'esteira-simulacoes' && <EsteiraSimulacoes setPaginaAtual={setPaginaAtual} />}
+          {paginaAtual === 'aguardando-simulacao' && <AguardandoSimulacao setPaginaAtual={setPaginaAtual} />}
           {paginaAtual === 'detalhe-simulacao' && <DetalheSimulacao setPaginaAtual={setPaginaAtual} />}
           {paginaAtual === 'detalhe-proposta' && <DetalheProposta setPaginaAtual={setPaginaAtual} />}
           {paginaAtual === 'status-proposta' && (perfil === 'Operacional' || perfil === 'Administrador') && <StatusProposta setPaginaAtual={setPaginaAtual} />}
