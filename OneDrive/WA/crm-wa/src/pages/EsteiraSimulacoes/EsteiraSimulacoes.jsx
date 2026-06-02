@@ -128,7 +128,7 @@ export default function EsteiraSimulacoes({ setPaginaAtual }) {
           status_cor: item.status_simulacao?.cor || '',
           convenio: item.convenio?.nome || 'N/A',
           usuario: item.usuario?.nome || 'N/A',
-          data: `${ano}-${mes}-${dia}`,
+          data: `${dia}/${mes}/${ano}`,
           hora: `${hora}:${minuto}`,
           criado_em: item.criado_em,
         }
@@ -182,10 +182,9 @@ export default function EsteiraSimulacoes({ setPaginaAtual }) {
               <option>Status</option>
             </select>
           </div>
-          <div className="campo-grupo" style={{ flexGrow: 1 }}>
+          <div className="campo-grupo" style={{ flex: '0 0 300px' }}>
             <label>Buscar:</label>
-            <input type="text" className="input-estilizado" placeholder="Digite para pesquisar..." value={filtroValor} onChange={e => setFiltroValor(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { setPagina(1); carregarSimulacoes(1) } }} />
-            <button className="btn-refresh" onClick={() => { setPagina(1); carregarSimulacoes(1) }} style={{ marginLeft: 4 }}>Buscar</button>
+            <input type="text" className="input-estilizado" placeholder="Digite para pesquisar..." value={filtroValor} onChange={e => { setFiltroValor(e.target.value); setPagina(1); carregarSimulacoes(1) }} />
           </div>
           <button className="btn-refresh" onClick={() => { setPagina(1); carregarSimulacoes(1) }} title="Atualizar lista">
             ↻

@@ -20,6 +20,8 @@ export default function EsteiraProposta({ setPaginaAtual }) {
   const propostasRef = useRef([])
   const statusFiltroExcluirRef = useRef(null)
   const ITENS_POR_PAGINA = 10
+  const [filtroTipo, setFiltroTipo] = useState('Todos')
+  const [filtroValor, setFiltroValor] = useState('')
 
   useEffect(() => {
     propostasRef.current = propostas
@@ -195,10 +197,10 @@ export default function EsteiraProposta({ setPaginaAtual }) {
         const dia = String(d.getDate()).padStart(2, '0')
         const hora = String(d.getHours()).padStart(2, '0')
         const minuto = String(d.getMinutes()).padStart(2, '0')
-        return { data: `${ano}-${mes}-${dia}`, hora: `${hora}:${minuto}` }
+        return { data: `${dia}/${mes}/${ano}`, hora: `${hora}:${minuto}` }
       }
 
-      const propostasFormatadas = data.map(item => {
+      let propostasFormatadas = data.map(item => {
         const ultimaAtualizacao = latestHistorico[item.id] || item.atualizado_em
         const { data: dataAtualizacao, hora: horaAtualizacao } = formatarBrasilia(ultimaAtualizacao)
         return {
@@ -232,6 +234,18 @@ export default function EsteiraProposta({ setPaginaAtual }) {
         if (!b._sort) return -1
         return new Date(a._sort) - new Date(b._sort)
       })
+
+      if (filtroValor.trim() && filtroTipo !== 'Todos') {
+        const termo = filtroValor.trim().toLowerCase()
+        propostasFormatadas = propostasFormatadas.filter(p => {
+          if (filtroTipo === 'Nome') return p.nomeCliente.toLowerCase().includes(termo)
+          if (filtroTipo === 'CPF') return p.cpf.replace(/\D/g, '').includes(termo.replace(/\D/g, ''))
+          if (filtroTipo === 'Status') return p.status.toLowerCase().includes(termo)
+          if (filtroTipo === 'Proposta Banco') return (p.propostaBanco || '').toLowerCase().includes(termo)
+          if (filtroTipo === 'Convênio') return p.convenio.toLowerCase().includes(termo)
+          return true
+        })
+      }
 
       setPropostas(propostasFormatadas)
       setTotalPaginas(count ? Math.ceil(count / ITENS_POR_PAGINA) : 1)
@@ -408,25 +422,22 @@ export default function EsteiraProposta({ setPaginaAtual }) {
       <div className="form-content" style={{ width: '95%', maxWidth: '1500px' }}>
         <div className="status-badge">Aprovação / Consulta</div>
 
-        <div className="filtros-wrapper">
+        <div className="filtros-wrapper" style={{ display: 'flex', gap: '10px', marginBottom: '15px', alignItems: 'flex-end' }}>
           <div className="campo-grupo">
             <label>Pesquisar por:</label>
-            <select className="input-estilizado" style={{ width: '250px' }}>
-              <option>Selecione o tipo de pesquisa</option>
-              <option>Nome do Cliente</option>
+            <select className="input-estilizado" style={{ width: '200px' }} value={filtroTipo} onChange={e => { setFiltroTipo(e.target.value); setPagina(1); carregarPropostas(1) }}>
+              <option>Todos</option>
+              <option>Nome</option>
               <option>CPF</option>
-              <option>Proposta Banco</option>
               <option>Status</option>
+              <option>Proposta Banco</option>
               <option>Convênio</option>
             </select>
           </div>
-
-          <div className="campo-grupo" style={{ flexGrow: 1 }}>
-            <label>Proposta:</label>
-            <input type="text" className="input-estilizado" placeholder="Digite para pesquisar..." />
+          <div className="campo-grupo" style={{ flex: '0 0 300px' }}>
+            <label>Buscar:</label>
+            <input type="text" className="input-estilizado" placeholder="Digite para pesquisar..." value={filtroValor} onChange={e => { setFiltroValor(e.target.value); setPagina(1); carregarPropostas(1) }} />
           </div>
-
-          <button className="btn-pesquisar">Pesquisar</button>
           <button className="btn-refresh" onClick={() => { setPagina(1); carregarPropostas(1) }} title="Atualizar lista">
             ↻
           </button>
