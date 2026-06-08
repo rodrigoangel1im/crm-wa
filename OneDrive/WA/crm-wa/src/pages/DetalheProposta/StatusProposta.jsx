@@ -1317,7 +1317,7 @@ export default function StatusProposta({ setPaginaAtual }) {
                         <label>BANCO:</label>
                         <select value={parcela.bancoOrigem} disabled>
                           <option value="">Selecione</option>
-                          {bancosDisponiveis.map((item) => (
+                          {bancosRecebimentoDisponiveis.map((item) => (
                             <option key={item.codigo} value={item.codigo}>{item.nome}</option>
                           ))}
                         </select>

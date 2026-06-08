@@ -1842,7 +1842,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                         <label>BANCO:</label>
                         <select value={parcela.bancoOrigem} onChange={(e) => { const n = [...parcelas]; n[index].bancoOrigem = e.target.value; setParcelas(n) }} disabled={!secoesAposClienteDesbloqueadas} required>
                           <option value="">Selecione</option>
-                          {bancosDisponiveis.map((item) => (
+                          {bancosRecebimentoDisponiveis.map((item) => (
                             <option key={item.codigo} value={item.codigo}>{item.nome}</option>
                           ))}
                         </select>
