@@ -939,7 +939,7 @@ export default function DetalheProposta({ setPaginaAtual }) {
                             <label>BANCO:</label>
                             <select value={parcela.bancoOrigem} disabled>
                               <option value="">Selecione</option>
-                              {bancosRecebimentoDisponiveis.map((item) => (
+                              {bancosDisponiveis.map((item) => (
                                 <option key={item.codigo} value={item.codigo}>{item.nome}</option>
                               ))}
                             </select>
