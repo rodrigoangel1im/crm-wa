@@ -18,10 +18,12 @@ export default function EsteiraProposta({ setPaginaAtual }) {
   const [pagina, setPagina] = useState(1)
   const [totalPaginas, setTotalPaginas] = useState(1)
   const propostasRef = useRef([])
-  const statusFiltroExcluirRef = useRef(null)
   const ITENS_POR_PAGINA = 10
   const [filtroTipo, setFiltroTipo] = useState('Todos')
   const [filtroValor, setFiltroValor] = useState('')
+  const [abaAtiva, setAbaAtiva] = useState(null)
+  const [listaStatus, setListaStatus] = useState([])
+  const [contagensStatus, setContagensStatus] = useState({})
 
   useEffect(() => {
     propostasRef.current = propostas
@@ -36,7 +38,74 @@ export default function EsteiraProposta({ setPaginaAtual }) {
 
   useEffect(() => {
     carregarPropostas(pagina)
-  }, [pagina])
+  }, [pagina, abaAtiva])
+
+  useEffect(() => {
+    carregarStatus()
+  }, [])
+
+  const ORDEM_STATUS = [
+    'aguarda documento',
+    'aguarda digitacao',
+    'em analise',
+    'aguarda assinatura',
+    'aguarda cip',
+    'aguarda refin',
+    'pendente',
+  ]
+
+  function normalizarNome(str) {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  }
+
+  function ordenarStatus(lista) {
+    return ORDEM_STATUS
+      .map(nome => {
+        const palavras = normalizarNome(nome).split(/\s+/)
+        return lista.find(s => {
+          const nomeNorm = normalizarNome(s.nome)
+          return palavras.every(p => nomeNorm.includes(p))
+        })
+      })
+      .filter(Boolean)
+  }
+
+  async function carregarStatus() {
+    const { data: statuses } = await supabase
+      .from('proposta_status')
+      .select('id, nome, cor, historico')
+      .order('id')
+    if (statuses) {
+      const filtrados = ordenarStatus(statuses)
+      setListaStatus(filtrados)
+      if (filtrados.length > 0 && !abaAtiva) {
+        const savedTab = localStorage.getItem('esteira_aba_ativa')
+        const tabExists = savedTab && filtrados.some(s => String(s.id) === savedTab)
+        setAbaAtiva(tabExists ? savedTab : String(filtrados[0].id))
+      }
+    }
+  }
+
+  useEffect(() => {
+    async function carregarContagens() {
+      const { data: statuses } = await supabase
+        .from('proposta_status')
+        .select('id, nome')
+      if (!statuses) return
+
+      const filtrados = ordenarStatus(statuses)
+      const contagens = {}
+      for (const s of filtrados) {
+        const { count } = await supabase
+          .from('proposta')
+          .select('id', { count: 'exact', head: true })
+          .eq('proposta_status_id', s.id)
+        contagens[s.id] = count || 0
+      }
+      setContagensStatus(contagens)
+    }
+    carregarContagens()
+  }, [])
 
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -73,25 +142,12 @@ export default function EsteiraProposta({ setPaginaAtual }) {
     try {
       setLoading(true)
 
-      if (!statusFiltroExcluirRef.current) {
-        const { data: allStatuses } = await supabase
-          .from('proposta_status')
-          .select('id, nome')
-        if (allStatuses) {
-          const targetNames = ['integrado', 'reprovado']
-          statusFiltroExcluirRef.current = allStatuses
-            .filter(s => targetNames.includes(s.nome.toLowerCase()))
-            .map(s => s.id)
-        } else {
-          statusFiltroExcluirRef.current = []
-        }
-      }
-
-      const start = (page - 1) * ITENS_POR_PAGINA
-      const end = start + ITENS_POR_PAGINA - 1
+      if (!abaAtiva) return
 
       const perfil = localStorage.getItem('usuario_perfil_crmwa') || ''
       const usuarioId = parseInt(localStorage.getItem('usuario_id_crmwa') || '0')
+
+      const temFiltro = filtroValor.trim() && filtroTipo !== 'Todos'
 
       let query = supabase
         .from('proposta')
@@ -104,6 +160,7 @@ export default function EsteiraProposta({ setPaginaAtual }) {
           usuario_digitador:usuario_digitador_id (nome),
           valor_liberado,
           valor_parcela,
+          previsao_saldo_data,
 
           atualizado_em,
           matricula (
@@ -113,11 +170,13 @@ export default function EsteiraProposta({ setPaginaAtual }) {
           banco_credor:banco_credor_id (nome),
           tipo_operacao:tipo_operacao_id (nome)
         `, { count: 'exact' })
+        .eq('proposta_status_id', parseInt(abaAtiva))
         .order('atualizado_em', { ascending: true })
-        .range(start, end)
 
-      if (statusFiltroExcluirRef.current.length > 0) {
-        query = query.not('proposta_status_id', 'in', `(${statusFiltroExcluirRef.current.join(',')})`)
+      if (!temFiltro) {
+        const start = (page - 1) * ITENS_POR_PAGINA
+        const end = start + ITENS_POR_PAGINA - 1
+        query = query.range(start, end)
       }
 
       if (perfil === 'Vendedor' && usuarioId) {
@@ -133,6 +192,8 @@ export default function EsteiraProposta({ setPaginaAtual }) {
 
       if (!data || data.length === 0) {
         setPropostas([])
+        setTotalPaginas(1)
+        setLoading(false)
         return
       }
 
@@ -222,6 +283,7 @@ export default function EsteiraProposta({ setPaginaAtual }) {
         horaAtualizacao,
         usuarioDigitador: item.usuario_digitador?.nome || 'N/A',
         tempoDecorrido: ultimaAtualizacao && !['integrado', 'reprovado'].includes(item.proposta_status?.nome?.toLowerCase()) ? calcularTempoDecorrido(ultimaAtualizacao) : '',
+        previsaoSaldoData: item.previsao_saldo_data,
         parcelas: parcelasPorProposta[item.id] || [],
         _sort: ultimaAtualizacao,
         locked: !!lockedById[item.id],
@@ -247,8 +309,16 @@ export default function EsteiraProposta({ setPaginaAtual }) {
         })
       }
 
-      setPropostas(propostasFormatadas)
-      setTotalPaginas(count ? Math.ceil(count / ITENS_POR_PAGINA) : 1)
+      if (temFiltro) {
+        const totalFiltered = propostasFormatadas.length
+        const startSlice = (page - 1) * ITENS_POR_PAGINA
+        const endSlice = startSlice + ITENS_POR_PAGINA
+        setPropostas(propostasFormatadas.slice(startSlice, endSlice))
+        setTotalPaginas(Math.ceil(totalFiltered / ITENS_POR_PAGINA) || 1)
+      } else {
+        setPropostas(propostasFormatadas)
+        setTotalPaginas(count ? Math.ceil(count / ITENS_POR_PAGINA) : 1)
+      }
     } catch (error) {
       console.error('Erro ao carregar propostas:', error)
     } finally {
@@ -276,6 +346,7 @@ export default function EsteiraProposta({ setPaginaAtual }) {
       return
     }
     localStorage.setItem('propostaSelecionada_crmwa', JSON.stringify(item))
+    localStorage.setItem('esteira_aba_ativa', abaAtiva)
     setPaginaAtual('status-proposta')
   }
 
@@ -420,12 +491,24 @@ export default function EsteiraProposta({ setPaginaAtual }) {
       </header>
 
       <div className="form-content" style={{ width: '95%', maxWidth: '1500px' }}>
-        <div className="status-badge">Aprovação / Consulta</div>
+        <div className="status-tabs">
+          {listaStatus.map(s => (
+            <button
+              key={s.id}
+              className={`status-tab ${String(abaAtiva) === String(s.id) ? 'active' : ''}`}
+              style={String(abaAtiva) === String(s.id) ? { borderBottomColor: s.cor || '#3f3b6c' } : {}}
+              onClick={() => { setAbaAtiva(String(s.id)); setPagina(1); localStorage.setItem('esteira_aba_ativa', String(s.id)) }}
+            >
+              {s.nome}
+              <span className="status-tab-count">{contagensStatus[s.id] ?? '-'}</span>
+            </button>
+          ))}
+        </div>
 
         <div className="filtros-wrapper" style={{ display: 'flex', gap: '10px', marginBottom: '15px', alignItems: 'flex-end' }}>
           <div className="campo-grupo">
             <label>Pesquisar por:</label>
-            <select className="input-estilizado" style={{ width: '200px' }} value={filtroTipo} onChange={e => { setFiltroTipo(e.target.value); setPagina(1); carregarPropostas(1) }}>
+            <select className="input-estilizado" style={{ width: '200px' }} value={filtroTipo} onChange={e => { setFiltroTipo(e.target.value) }}>
               <option>Todos</option>
               <option>Nome</option>
               <option>CPF</option>
@@ -436,11 +519,12 @@ export default function EsteiraProposta({ setPaginaAtual }) {
           </div>
           <div className="campo-grupo" style={{ flex: '0 0 300px' }}>
             <label>Buscar:</label>
-            <input type="text" className="input-estilizado" placeholder="Digite para pesquisar..." value={filtroValor} onChange={e => { setFiltroValor(e.target.value); setPagina(1); carregarPropostas(1) }} />
+            <input type="text" className="input-estilizado" placeholder="Digite para pesquisar..." value={filtroValor} onChange={e => setFiltroValor(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { setPagina(1); carregarPropostas(1) } }} />
           </div>
-          <button className="btn-refresh" onClick={() => { setPagina(1); carregarPropostas(1) }} title="Atualizar lista">
-            ↻
+          <button className="btn-pesquisar" onClick={() => { setPagina(1); carregarPropostas(1) }} title="Pesquisar">
+            Pesquisar
           </button>
+
         </div>
 
         <div className="tabela-container">
@@ -466,7 +550,10 @@ export default function EsteiraProposta({ setPaginaAtual }) {
             </thead>
             <tbody>
               {propostas.map((item) => (
-                <tr key={item.id} style={item.locked ? { fontWeight: 'bold' } : {}}>
+                <tr key={item.id} style={{
+                  ...(item.locked ? { fontWeight: 'bold' } : {}),
+                  ...(item.previsaoSaldoData && (() => { const t = new Date(new Date().toDateString()).getTime(); const p = new Date(item.previsaoSaldoData).getTime(); return t >= p - 86400000 && t <= p + 86400000 })() ? { backgroundColor: '#ffcdd2' } : {})
+                }}>
                   <td style={{ textAlign: 'center' }}>
                     <span
                       style={{ cursor: 'pointer', color: '#000', fontWeight: 'bold' }}
@@ -477,7 +564,7 @@ export default function EsteiraProposta({ setPaginaAtual }) {
                   </td>
                   <td>{item.propostaBanco}</td>
                   <td>{item.nomeCliente.toUpperCase()}</td>
-                  <td>{item.cpf}</td>
+                  <td>{item.cpf ? `${item.cpf.slice(0, 3)}.${item.cpf.slice(3, 6)}.${item.cpf.slice(6, 9)}-${item.cpf.slice(9, 11)}` : 'N/A'}</td>
                   <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#3f3b6c', fontSize: '14px', cursor: 'pointer' }} onClick={() => { setModalDetalheId(item.id); setModalDetalheOpen(true) }}>
                     {item.statusHistorico}
                   </td>

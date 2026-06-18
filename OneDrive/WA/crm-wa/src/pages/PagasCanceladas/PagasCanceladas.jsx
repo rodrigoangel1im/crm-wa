@@ -14,6 +14,8 @@ export default function PagasCanceladas({ setPaginaAtual }) {
   const ITENS_POR_PAGINA = 10
   const [filtroTipo, setFiltroTipo] = useState('Todos')
   const [filtroValor, setFiltroValor] = useState('')
+  const [listaStatus, setListaStatus] = useState([])
+  const [abaAtiva, setAbaAtiva] = useState(null)
 
   useEffect(() => {
     propostasRef.current = propostas
@@ -22,8 +24,27 @@ export default function PagasCanceladas({ setPaginaAtual }) {
   const [modalDetalheId, setModalDetalheId] = useState(null)
 
   useEffect(() => {
-    carregarPropostas(pagina)
-  }, [pagina])
+    async function init() {
+      const { data: allStatuses } = await supabase
+        .from('proposta_status')
+        .select('id, nome')
+      if (allStatuses) {
+        const targetNames = ['integrado', 'reprovado']
+        const filtered = allStatuses.filter(s =>
+          targetNames.includes(s.nome.toLowerCase())
+        )
+        setListaStatus(filtered)
+        if (filtered.length > 0 && !abaAtiva) {
+          setAbaAtiva(String(filtered[0].id))
+        }
+      }
+    }
+    init()
+  }, [])
+
+  useEffect(() => {
+    if (abaAtiva) carregarPropostas(pagina)
+  }, [pagina, abaAtiva])
 
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -60,25 +81,15 @@ export default function PagasCanceladas({ setPaginaAtual }) {
     try {
       setLoading(true)
 
-      if (!statusFiltroIncluirRef.current) {
-        const { data: allStatuses } = await supabase
-          .from('proposta_status')
-          .select('id, nome')
-        if (allStatuses) {
-          const targetNames = ['integrado', 'reprovado']
-          statusFiltroIncluirRef.current = allStatuses
-            .filter(s => targetNames.includes(s.nome.toLowerCase()))
-            .map(s => s.id)
-        } else {
-          statusFiltroIncluirRef.current = []
-        }
-      }
-
-      const start = (page - 1) * ITENS_POR_PAGINA
-      const end = start + ITENS_POR_PAGINA - 1
+      statusFiltroIncluirRef.current = abaAtiva ? [parseInt(abaAtiva)] : []
 
       const perfil = localStorage.getItem('usuario_perfil_crmwa') || ''
       const usuarioId = parseInt(localStorage.getItem('usuario_id_crmwa') || '0')
+
+      const temFiltro = filtroValor.trim() && filtroTipo !== 'Todos'
+
+      const umMesAtras = new Date()
+      umMesAtras.setMonth(umMesAtras.getMonth() - 1)
 
       let query = supabase
         .from('proposta')
@@ -99,8 +110,14 @@ export default function PagasCanceladas({ setPaginaAtual }) {
           banco_credor:banco_credor_id (nome),
           tipo_operacao:tipo_operacao_id (nome)
         `, { count: 'exact' })
-        .order('atualizado_em', { ascending: true })
-        .range(start, end)
+        .gte('atualizado_em', umMesAtras.toISOString())
+        .order('atualizado_em', { ascending: false })
+
+      if (!temFiltro) {
+        const start = (page - 1) * ITENS_POR_PAGINA
+        const end = start + ITENS_POR_PAGINA - 1
+        query = query.range(start, end)
+      }
 
       if (statusFiltroIncluirRef.current.length > 0) {
         query = query.in('proposta_status_id', statusFiltroIncluirRef.current)
@@ -119,6 +136,8 @@ export default function PagasCanceladas({ setPaginaAtual }) {
 
       if (!data || data.length === 0) {
         setPropostas([])
+        setTotalPaginas(1)
+        setLoading(false)
         return
       }
 
@@ -234,8 +253,16 @@ export default function PagasCanceladas({ setPaginaAtual }) {
         })
       }
 
-      setPropostas(propostasFormatadas)
-      setTotalPaginas(count ? Math.ceil(count / ITENS_POR_PAGINA) : 1)
+      if (temFiltro) {
+        const totalFiltered = propostasFormatadas.length
+        const startSlice = (page - 1) * ITENS_POR_PAGINA
+        const endSlice = startSlice + ITENS_POR_PAGINA
+        setPropostas(propostasFormatadas.slice(startSlice, endSlice))
+        setTotalPaginas(Math.ceil(totalFiltered / ITENS_POR_PAGINA) || 1)
+      } else {
+        setPropostas(propostasFormatadas)
+        setTotalPaginas(count ? Math.ceil(count / ITENS_POR_PAGINA) : 1)
+      }
     } catch (error) {
       console.error('Erro ao carregar propostas:', error)
     } finally {
@@ -277,7 +304,7 @@ export default function PagasCanceladas({ setPaginaAtual }) {
     return `${diffMeses} mês${diffMeses > 1 ? 'es' : ''} atrás`
   }
 
-  if (loading) {
+  if (loading && !listaStatus.length) {
     return <LoadingBars />
   }
 
@@ -289,10 +316,21 @@ export default function PagasCanceladas({ setPaginaAtual }) {
       </header>
 
       <div className="form-content" style={{ width: '95%', maxWidth: '1500px' }}>
+        <div className="status-tabs">
+          {listaStatus.map(s => (
+            <button
+              key={s.id}
+              className={`status-tab ${String(abaAtiva) === String(s.id) ? 'active' : ''}`}
+              onClick={() => { setAbaAtiva(String(s.id)); setPagina(1) }}
+            >
+              {s.nome}
+            </button>
+          ))}
+        </div>
         <div className="filtros-wrapper" style={{ display: 'flex', gap: '10px', marginBottom: '15px', alignItems: 'flex-end' }}>
           <div className="campo-grupo">
             <label>Pesquisar por:</label>
-            <select className="input-estilizado" style={{ width: '200px' }} value={filtroTipo} onChange={e => { setFiltroTipo(e.target.value); setPagina(1); carregarPropostas(1) }}>
+            <select className="input-estilizado" style={{ width: '200px' }} value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}>
               <option>Todos</option>
               <option>Nome</option>
               <option>CPF</option>
@@ -303,10 +341,10 @@ export default function PagasCanceladas({ setPaginaAtual }) {
           </div>
           <div className="campo-grupo" style={{ flex: '0 0 300px' }}>
             <label>Buscar:</label>
-            <input type="text" className="input-estilizado" placeholder="Digite para pesquisar..." value={filtroValor} onChange={e => { setFiltroValor(e.target.value); setPagina(1); carregarPropostas(1) }} />
+            <input type="text" className="input-estilizado" placeholder="Digite para pesquisar..." value={filtroValor} onChange={e => setFiltroValor(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { setPagina(1); carregarPropostas(1) } }} />
           </div>
-          <button className="btn-refresh" onClick={() => { setPagina(1); carregarPropostas(1) }} title="Atualizar lista">
-            ↻
+          <button className="btn-pesquisar" onClick={() => { setPagina(1); carregarPropostas(1) }} title="Pesquisar">
+            Pesquisar
           </button>
         </div>
 
@@ -344,7 +382,7 @@ export default function PagasCanceladas({ setPaginaAtual }) {
                   </td>
                   <td>{item.propostaBanco}</td>
                   <td>{item.nomeCliente.toUpperCase()}</td>
-                  <td>{item.cpf}</td>
+                  <td>{item.cpf ? `${item.cpf.slice(0, 3)}.${item.cpf.slice(3, 6)}.${item.cpf.slice(6, 9)}-${item.cpf.slice(9, 11)}` : 'N/A'}</td>
                   <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#3f3b6c', fontSize: '14px', cursor: 'pointer' }} onClick={() => { setModalDetalheId(item.id); setModalDetalheOpen(true) }}>
                     {item.statusHistorico}
                   </td>

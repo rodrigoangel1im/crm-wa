@@ -126,6 +126,8 @@ export default function AdicionarContrato({ setPaginaAtual }) {
   const [addRefinPrazo, setAddRefinPrazo] = useState('')
   const [addRefinTps, setAddRefinTps] = useState('')
   const [addRefinSubmitting, setAddRefinSubmitting] = useState(false)
+  const [observacao, setObservacao] = useState('')
+
   const dadosBancariosInseridoRef = useRef(null)
   const matriculaIdRef = useRef(null)
   const propostaStatusIdRef = useRef(null)
@@ -770,6 +772,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
       const deveSepararPropostas = String(tipoOperacao) === "3"
 
       const dadosSimulacao = {}
+      if (observacao) dadosSimulacao.observacao = observacao
 
       if (String(tipoOperacao) === "2") {
         dadosSimulacao.parcela_final = parseValor(valorParcelaFinal)
@@ -2142,6 +2145,19 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                   <option value="salario">Conta Salário</option>
                 </select>
               </div>
+            </div>
+          </section>
+
+          <section className="secao-container">
+            <header className="secao-header">Observação</header>
+            <div style={{ padding: '8px 12px' }}>
+              <textarea
+                className="input-estilizado"
+                style={{ width: '100%', minHeight: '80px', resize: 'vertical' }}
+                value={observacao}
+                onChange={(e) => setObservacao(e.target.value)}
+                placeholder="Observações sobre a proposta..."
+              />
             </div>
           </section>
 

@@ -87,6 +87,8 @@ export default function StatusProposta({ setPaginaAtual }) {
   const [naoTemCodigoTabela, setNaoTemCodigoTabela] = useState(false)
   const [tpsCorrigida, setTpsCorrigida] = useState('')
   const [descricao, setDescricao] = useState('')
+  const [previsaoSaldoData, setPrevisaoSaldoData] = useState('')
+  const [observacao, setObservacao] = useState('')
 
   const [dadosBancarios, setDadosBancarios] = useState({
     banco: '',
@@ -420,6 +422,10 @@ export default function StatusProposta({ setPaginaAtual }) {
         setMensagem({ tipo: 'erro', texto: 'Informe o ADE BANCO ou marque "Não tem ADE".' })
         return
       }
+      if ((listaStatus.find(s => String(s.id) === String(propostaStatusId))?.nome || '').toLowerCase().includes('cip') && !previsaoSaldoData) {
+        setMensagem({ tipo: 'erro', texto: 'Informe a PREVISÃO DO SALDO DEVEDOR.' })
+        return
+      }
       const propostaStr = localStorage.getItem('propostaSelecionada_crmwa')
       if (!propostaStr) return
       const proposta = JSON.parse(propostaStr)
@@ -435,6 +441,8 @@ export default function StatusProposta({ setPaginaAtual }) {
         ade_banco: adeBanco || null,
         descricao: descricao || null,
         detalhe_status_id: detalheStatusId ? parseInt(detalheStatusId) : null,
+        previsao_saldo_data: previsaoSaldoData || null,
+        observacao: observacao || null,
         usuario_nome: nomeUsuario
       }
 
@@ -462,7 +470,8 @@ export default function StatusProposta({ setPaginaAtual }) {
           codigo_tabela: codigoTabela || null,
           numero_proposta_banco: adeBanco || null,
           proposta_status_id: propostaStatusId ? parseInt(propostaStatusId) : null,
-          dados_simulacao: { ...existing, descricao_sidebar: descricao || null }
+          previsao_saldo_data: previsaoSaldoData || null,
+          dados_simulacao: { ...existing, descricao_sidebar: descricao || null, observacao: observacao || null }
         })
         .eq('id', proposta.id)
       if (error) throw error
@@ -674,6 +683,9 @@ export default function StatusProposta({ setPaginaAtual }) {
       }
 
       const ds = proposta.dados_simulacao
+      if (ds) {
+        if (ds.observacao) setObservacao(ds.observacao)
+      }
       if (ds && String(proposta.tipo_operacao_id) === '2') {
         if (ds.saldo_devedor_refin) setSaldoDevedorRefin(ds.saldo_devedor_refin.toFixed(2).replace('.', ','))
         if (ds.valor_novo_emprestimo) setValorNovoEmprestimo(ds.valor_novo_emprestimo.toFixed(2).replace('.', ','))
@@ -686,6 +698,7 @@ export default function StatusProposta({ setPaginaAtual }) {
       }
 
       if (proposta.proposta_status_id) { setPropostaStatusId(String(proposta.proposta_status_id)); setPropostaStatusIdOriginal(String(proposta.proposta_status_id)) }
+      if (proposta.previsao_saldo_data) setPrevisaoSaldoData(proposta.previsao_saldo_data)
       if (proposta.usuario_digitador_id) setUsuarioDigitadorId(String(proposta.usuario_digitador_id))
       setDetalheStatusId('')
 
@@ -1595,8 +1608,10 @@ export default function StatusProposta({ setPaginaAtual }) {
               </div>
               {!['1', '2', '6'].includes(String(propostaStatusId)) && (
               <div className="campo-lateral">
-                <label>{String(propostaStatusId) === '3' ? 'MOTIVO DA REPROVA:' : String(propostaStatusId) === '5' ? 'MOTIVO DA PENDÊNCIA:' : String(propostaStatusId) === '7' ? 'LINK:' : 'DESCRIÇÃO:'}</label>
-                {detalhesStatus.length > 0 ? (
+                <label>{String(propostaStatusId) === '3' ? 'MOTIVO DA REPROVA:' : String(propostaStatusId) === '5' ? 'MOTIVO DA PENDÊNCIA:' : String(propostaStatusId) === '7' ? 'LINK:' : (listaStatus.find(s => String(s.id) === String(propostaStatusId))?.nome || '').toLowerCase().includes('cip') ? <>PREVISÃO DO SALDO DEVEDOR: <span className="required">*</span></> : 'DESCRIÇÃO:'}</label>
+                {(listaStatus.find(s => String(s.id) === String(propostaStatusId))?.nome || '').toLowerCase().includes('cip') ? (
+                  <input type="date" value={previsaoSaldoData} onChange={(e) => setPrevisaoSaldoData(e.target.value)} className="input-estilizado" disabled={isReprovado} />
+                ) : detalhesStatus.length > 0 ? (
                   <select value={detalheStatusId} onChange={(e) => setDetalheStatusId(e.target.value)} disabled={isReprovado}>
                     <option value="">Selecione</option>
                     {detalhesStatus.map((d) => (
@@ -1618,7 +1633,22 @@ export default function StatusProposta({ setPaginaAtual }) {
                   </label>
                 </div>
               </div>
+              <div className="campo-lateral">
+                <label>OBSERVAÇÃO:</label>
+                <textarea
+                  className="input-estilizado"
+                  style={{ width: '100%', minHeight: '60px', resize: 'vertical', fontSize: '12px' }}
+                  value={observacao}
+                  onChange={(e) => setObservacao(e.target.value)}
+                  disabled={true}
+                />
+              </div>
               {lockError && <div className="lock-warning" style={{ color: '#d32f2f', fontSize: '13px', marginBottom: '8px', textAlign: 'center' }}>{lockError}</div>}
+              {mensagem.texto && (
+                <div className={`mensagem ${mensagem.tipo}`} style={{ width: '100%', textAlign: 'center', marginBottom: '8px' }}>
+                  {mensagem.texto}
+                </div>
+              )}
               <button className="btn-salvar-lateral" onClick={salvarValoresReais} disabled={!!lockError}>Salvar</button>
               {String(propostaStatusId) === '3' && (
                 <button className="btn-redigitar" onClick={() => setModalRedigitarAberto(true)}>REDIGITAR</button>

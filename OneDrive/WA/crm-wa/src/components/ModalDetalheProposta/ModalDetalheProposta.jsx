@@ -188,6 +188,7 @@ export default function ModalDetalheProposta({ isOpen, onClose, propostaId }) {
                           {d.detalhe_status_id && <div>Detalhe: {getDetalheStatusNome(d.detalhe_status_id)}</div>}
                           {d.ade_banco && <div>ADE Banco: {d.ade_banco}</div>}
                           {d.descricao && <div>Descrição: {d.descricao}</div>}
+                          {d.previsao_saldo_data && <div>Previsão Saldo Devedor: {new Date(d.previsao_saldo_data + 'T12:00:00').toLocaleDateString('pt-BR')}</div>}
                         </div>
                       </div>
                     )
