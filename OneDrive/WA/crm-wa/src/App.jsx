@@ -23,7 +23,7 @@ import StatusFinanceiro from './pages/Financeiro/StatusFinanceiro/StatusFinancei
 import Higienizacao from './pages/Higienizacao/Higienizacao'
 import Sidebar from './components/Sidebar/Sidebar'
 import LoadingBars from './components/LoadingBars/LoadingBars'
-import ChatBot from './components/ChatBot/ChatBot'
+import NotificationBell from './components/NotificationBell/NotificationBell'
 import './App.css'
 
 export default function App() {
@@ -103,7 +103,7 @@ export default function App() {
           {paginaAtual === 'higienizacao' && <Higienizacao />}
         </main>
       </div>
-      <ChatBot />
+      <NotificationBell setPaginaAtual={setPaginaAtual} />
       {transitioning && <LoadingBars />}
     </>
   )

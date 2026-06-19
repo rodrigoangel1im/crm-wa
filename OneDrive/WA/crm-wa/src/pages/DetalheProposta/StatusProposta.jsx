@@ -136,6 +136,7 @@ export default function StatusProposta({ setPaginaAtual }) {
   const [modalConfirmarDelete, setModalConfirmarDelete] = useState(false)
   const [modalSucesso, setModalSucesso] = useState(false)
   const [lockError, setLockError] = useState('')
+  const [toastVisivel, setToastVisivel] = useState(false)
 
   const TIPOS_DOCUMENTO = [
     { id: 'identidade', label: 'Documento de identidade' },
@@ -840,6 +841,20 @@ export default function StatusProposta({ setPaginaAtual }) {
         if (erroParcelas) throw erroParcelas
       }
 
+      // Reprovar proposta original
+      const statusReprovado = listaStatus.find(s => normalizar(s.nome).includes('reprovado'))
+      if (statusReprovado) {
+        await supabase
+          .from('proposta')
+          .update({ proposta_status_id: statusReprovado.id })
+          .eq('id', proposta.id)
+
+        await supabase.from('proposta_historico').insert({
+          proposta_id: proposta.id,
+          dados: { acao: 'Proposta reprovada - redigitada como ID WA: ' + inserida.id, proposta_status_id: statusReprovado.id, usuario_nome: nomeUsuarioRedig }
+        })
+      }
+
       setModalRedigitarAberto(false)
       setBancoRedigitar('')
       setModalRedigirSucesso(true)
@@ -868,6 +883,14 @@ export default function StatusProposta({ setPaginaAtual }) {
     } catch (error) {
       console.error('Erro ao salvar digitador:', error)
       setMensagem({ tipo: 'erro', texto: 'Erro ao salvar digitador: ' + error.message })
+    }
+  }
+
+  function copiarTexto(texto) {
+    if (texto && String(texto).trim() !== '') {
+      navigator.clipboard.writeText(String(texto))
+      setToastVisivel(true)
+      setTimeout(() => setToastVisivel(false), 2000)
     }
   }
 
@@ -924,6 +947,11 @@ export default function StatusProposta({ setPaginaAtual }) {
 
   return (
     <>
+      {toastVisivel && (
+        <div className="toast-notification">
+          Os dados foram copiados
+        </div>
+      )}
       <div className="form-container">
         <header className="form-header">
           <h1>Status da Proposta</h1>
@@ -1009,7 +1037,7 @@ export default function StatusProposta({ setPaginaAtual }) {
           <section className="secao-container">
             <header className="secao-header">Cliente</header>
             <div className="grid-row">
-              <div className="field-group" style={{position: 'relative', flex: 2}}>
+              <div className="field-group" style={{position: 'relative', flex: 2, cursor: 'pointer'}} onClick={() => copiarTexto(cpf)}>
                 <label>CPF:</label>
                 <div style={{display: 'flex', gap: '5px', width: '100%', alignItems: 'stretch'}}>
                   <IMaskInput
@@ -1024,23 +1052,23 @@ export default function StatusProposta({ setPaginaAtual }) {
                 </div>
                 {cpfValido === false && <span className="error-msg" style={{position: 'absolute', bottom: '-16px', left: '0'}}>CPF inválido</span>}
               </div>
-              <div className="field-group" style={{position: 'relative'}}>
+              <div className="field-group" style={{position: 'relative', cursor: 'pointer'}} onClick={() => copiarTexto(matricula)}>
                 <label>MATRÍCULA:</label>
                 <input type="text" placeholder="Digite a matrícula" value={matricula} disabled />
               </div>
               {tipoConvenio === siapePensionistaId && (
-                <div className="field-group" style={{position: 'relative'}}>
+                <div className="field-group" style={{position: 'relative', cursor: 'pointer'}} onClick={() => copiarTexto(matriculaInstituidor)}>
                   <label>MATRÍCULA INSTITUIDOR:</label>
                   <input type="text" placeholder="Digite a matrícula do instituidor (7 dígitos)" value={matriculaInstituidor} disabled required />
                 </div>
               )}
-              <div className="field-group">
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(dataNascimento)}>
                 <label>DATA DE NASCIMENTO:</label>
                 <input type="date" value={dataNascimento} disabled />
               </div>
             </div>
             <div style={{display: 'flex', gap: '15px', width: '100%', alignItems: 'flex-end'}}>
-              <div className="field-group" style={{marginBottom: 0, flex: '0 0 20%'}}>
+              <div className="field-group" style={{marginBottom: 0, flex: '0 0 20%', cursor: 'pointer'}} onClick={() => copiarTexto(margemCliente)}>
                 <label>MARGEM:</label>
                 <IMaskInput
                   mask={Number}
@@ -1065,13 +1093,13 @@ export default function StatusProposta({ setPaginaAtual }) {
           <section className="secao-container">
             <header className="secao-header">Dados Pessoais</header>
             <div className="grid-row">
-              <div className="field-group full-width">
+              <div className="field-group full-width" style={{cursor: 'pointer'}} onClick={() => copiarTexto(nomeCompleto)}>
                 <label>NOME COMPLETO:</label>
                 <input type="text" placeholder="Digite o nome completo" value={nomeCompleto} disabled />
               </div>
             </div>
             <div className="grid-row">
-              <div className="field-group">
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(sexo)}>
                 <label>SEXO:</label>
                 <select value={sexo} disabled>
                   <option value="">Selecione</option>
@@ -1080,11 +1108,11 @@ export default function StatusProposta({ setPaginaAtual }) {
                   <option value="outro">Outro</option>
                 </select>
               </div>
-              <div className="field-group">
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(numDocumento)}>
                 <label>NÚMERO DO DOCUMENTO:</label>
                 <input type="text" placeholder="Número do RG" value={numDocumento} disabled />
               </div>
-              <div className="field-group">
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(alfabetizado)}>
                 <label>CLIENTE ALFABETIZADO:</label>
                 <select value={alfabetizado} disabled>
                   <option value="">Selecione</option>
@@ -1094,11 +1122,11 @@ export default function StatusProposta({ setPaginaAtual }) {
               </div>
             </div>
             <div className="grid-row">
-              <div className="field-group" style={{flex: 3}}>
+              <div className="field-group" style={{flex: 3, cursor: 'pointer'}} onClick={() => copiarTexto(nomeMae)}>
                 <label>NOME DA MÃE:</label>
                 <input type="text" placeholder="Digite o nome da mãe" value={nomeMae} disabled />
               </div>
-              <div className="field-group small">
+              <div className="field-group small" style={{cursor: 'pointer'}} onClick={() => copiarTexto(ufNaturalidade)}>
                 <label>UF NAT:</label>
                 <select value={ufNaturalidade} disabled>
                   <option value="">UF</option>
@@ -1115,15 +1143,15 @@ export default function StatusProposta({ setPaginaAtual }) {
               </div>
             </div>
             <div className="grid-row">
-              <div className="field-group small">
+              <div className="field-group small" style={{cursor: 'pointer'}} onClick={() => copiarTexto(ddd)}>
                 <label>DDD:</label>
                 <IMaskInput mask="00" value={ddd} placeholder="00" className="imask-input" disabled />
               </div>
-              <div className="field-group">
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(telefone)}>
                 <label>TELEFONE:</label>
                 <IMaskInput mask="00000-0000" value={telefone} placeholder="00000-0000" className="imask-input" disabled />
               </div>
-              <div className="field-group">
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(email)}>
                 <label>EMAIL:</label>
                 <input type="email" placeholder="email@exemplo.com" value={email} disabled />
               </div>
@@ -1133,26 +1161,26 @@ export default function StatusProposta({ setPaginaAtual }) {
           <section className="secao-container">
             <header className="secao-header">Endereço</header>
             <div className="grid-row address-row-1">
-              <div className="field-group xsmall">
+              <div className="field-group xsmall" style={{cursor: 'pointer'}} onClick={() => copiarTexto(cep)}>
                 <label>CEP:</label>
                 <IMaskInput mask="00000-000" value={cep} placeholder="00000-000" className="imask-input" disabled />
               </div>
               <div className="field-group button-align">
                 <button className="btn-cep" disabled>BUSCAR CEP</button>
               </div>
-              <div className="field-group large">
+              <div className="field-group large" style={{cursor: 'pointer'}} onClick={() => copiarTexto(logradouro)}>
                 <label>LOGRADOURO:</label>
                 <input type="text" placeholder="Rua, Avenida, etc." value={logradouro} disabled />
               </div>
-              <div className="field-group xsmall">
+              <div className="field-group xsmall" style={{cursor: 'pointer'}} onClick={() => copiarTexto(numero)}>
                 <label>NÚMERO:</label>
                 <input type="text" placeholder="000" value={numero} disabled />
               </div>
-              <div className="field-group">
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(complemento)}>
                 <label>COMPLEMENTO:</label>
                 <input type="text" placeholder="Apto, Bloco, etc." value={complemento} disabled />
               </div>
-              <div className="field-group small">
+              <div className="field-group small" style={{cursor: 'pointer'}} onClick={() => copiarTexto(estado)}>
                 <label>ESTADO:</label>
                 <select value={estado} disabled>
                   <option value="">UF</option>
@@ -1169,11 +1197,11 @@ export default function StatusProposta({ setPaginaAtual }) {
               </div>
             </div>
             <div className="grid-row">
-              <div className="field-group">
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(bairro)}>
                 <label>BAIRRO:</label>
                 <input type="text" placeholder="Digite o bairro" value={bairro} disabled />
               </div>
-              <div className="field-group">
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(cidade)}>
                 <label>CIDADE:</label>
                 <input type="text" placeholder="Digite a cidade" value={cidade} disabled />
               </div>
@@ -1190,49 +1218,38 @@ export default function StatusProposta({ setPaginaAtual }) {
                 </div>
               )}
               <div className="grid-row">
-                <div className="field-group">
-                  <label>VALOR DE PARCELA:</label>
-                  <IMaskInput mask={Number} value={valorParcela} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
-                </div>
-                <div className="field-group">
-                  <label>TAXA DE JUROS:</label>
-                  <IMaskInput mask={Number} value={taxaJuros} placeholder="0,00%" className="imask-input" scale={2} radix="," suffix="%" thousandsSeparator="." disabled />
-                </div>
-                <div className="field-group">
-                  <label>PRAZO:</label>
-                  <select value={prazo} disabled>
-                    <option value="">Selecione</option>
-                    {prazo && ![120, 108, 96, 84, 72, 60].includes(Number(prazo)) && (
-                      <option value={prazo}>{prazo}</option>
-                    )}
-                    <option value="120">120</option>
-                    <option value="108">108</option>
-                    <option value="96">96</option>
-                    <option value="84">84</option>
-                    <option value="72">72</option>
-                    <option value="60">60</option>
-                  </select>
-                </div>
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(valorParcela)}>
+                <label>VALOR DE PARCELA:</label>
+                <IMaskInput mask={Number} value={valorParcela} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
               </div>
-              <div className="grid-row">
-                <div className="field-group">
-                  <label>VALOR LIBERADO:</label>
-                  <IMaskInput mask={Number} value={valorLiberado} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
-                </div>
-                <div className="field-group">
-                  <label>TPS:</label>
-                  <IMaskInput mask={Number} value={tps} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
-                </div>
-                <div className="field-group">
-                  <label>SEGURO:</label>
-                  <select value={seguro} disabled>
-                    <option value="">Selecione</option>
-                    <option value="sim">Sim</option>
-                    <option value="nao">Não</option>
-                  </select>
-                </div>
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(taxaJuros)}>
+                <label>TAXA DE JUROS:</label>
+                <IMaskInput mask={Number} value={taxaJuros} placeholder="0,00%" className="imask-input" scale={2} radix="," suffix="%" thousandsSeparator="." disabled />
               </div>
-            </section>
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(prazo)}>
+                <label>PRAZO:</label>
+                <input type="text" value={prazo} disabled />
+              </div>
+            </div>
+            <div className="grid-row">
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(valorLiberado)}>
+                <label>VALOR LIBERADO:</label>
+                <IMaskInput mask={Number} value={valorLiberado} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
+              </div>
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(tps)}>
+                <label>TPS:</label>
+                <IMaskInput mask={Number} value={tps} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
+              </div>
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(seguro)}>
+                <label>SEGURO:</label>
+                <select value={seguro} disabled>
+                  <option value="">Selecione</option>
+                  <option value="sim">Sim</option>
+                  <option value="nao">Não</option>
+                </select>
+              </div>
+            </div>
+          </section>
           )}
 
           {String(tipoOperacao) === '2' && (
@@ -1243,11 +1260,11 @@ export default function StatusProposta({ setPaginaAtual }) {
                   <div className="subsection-title" style={{marginBottom: '15px'}}>Parcelas</div>
                   {parcelas.map((parcela, index) => (
                     <div key={parcela.id} style={{display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'nowrap', marginBottom: '10px'}}>
-                      <div className="field-group" style={{flex: 1, minWidth: 0}}>
+                      <div className="field-group" style={{flex: 1, minWidth: 0, cursor: 'pointer'}} onClick={() => copiarTexto(parcela.valor)}>
                         <label>VALOR DE PARCELA:</label>
                         <IMaskInput mask={Number} value={parcela.valor} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
                       </div>
-                      <div className="field-group" style={{flex: 1, minWidth: 0}}>
+                      <div className="field-group" style={{flex: 1, minWidth: 0, cursor: 'pointer'}} onClick={() => copiarTexto(parcela.numero)}>
                         <label>PARCELAS RESTANTES:</label>
                         <select value={parcela.numero} disabled>
                           <option value="">Selecione</option>
@@ -1269,30 +1286,19 @@ export default function StatusProposta({ setPaginaAtual }) {
                 <div style={{flex: 1}}>
                   <div className="subsection-title">Operação</div>
                   <div className="grid-row">
-                    <div className="field-group">
+                    <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(valorLiberado)}>
                       <label>VALOR LIBERADO:</label>
                       <IMaskInput mask={Number} value={valorLiberado} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
                     </div>
-                    <div className="field-group">
+                    <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(prazo)}>
                       <label>PRAZO:</label>
-                      <select value={prazo} disabled>
-                        <option value="">Selecione</option>
-                        {prazo && ![120, 108, 96, 84, 72, 60].includes(Number(prazo)) && (
-                          <option value={prazo}>{prazo}</option>
-                        )}
-                        <option value="120">120</option>
-                        <option value="108">108</option>
-                        <option value="96">96</option>
-                        <option value="84">84</option>
-                        <option value="72">72</option>
-                        <option value="60">60</option>
-                      </select>
+                      <input type="text" value={prazo} disabled />
                     </div>
-                    <div className="field-group">
+                    <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(tps)}>
                       <label>TPS:</label>
                       <IMaskInput mask={Number} value={tps} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
                     </div>
-                    <div className="field-group">
+                    <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(seguro)}>
                       <label>SEGURO:</label>
                       <select value={seguro} disabled>
                         <option value="">Selecione</option>
@@ -1301,13 +1307,13 @@ export default function StatusProposta({ setPaginaAtual }) {
                       </select>
                     </div>
                     {String(tipoProduto) === '3' && (
-                      <div className="field-group">
+                      <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(margemAgregada)}>
                         <label>MARGEM AGREGADA:</label>
                         <IMaskInput mask={Number} value={margemAgregada} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
                       </div>
                     )}
                     {unificarParcela === 'sim' && (
-                      <div className="field-group">
+                      <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(valorParcelaFinal)}>
                         <label>VALOR FINAL DE PARCELA:</label>
                         <IMaskInput mask={Number} value={valorParcelaFinal} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
                       </div>
@@ -1326,7 +1332,7 @@ export default function StatusProposta({ setPaginaAtual }) {
                   <div className="subsection-title" style={{marginBottom: '15px'}}>Parcelas</div>
                   {parcelas.map((parcela, index) => (
                     <div key={parcela.id} style={{display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'nowrap', marginBottom: '10px'}}>
-                      <div className="field-group" style={{flex: 1, minWidth: 0}}>
+                      <div className="field-group" style={{flex: 1, minWidth: 0, cursor: 'pointer'}} onClick={() => { const b = bancosRecebimentoDisponiveis.find(x => String(x.codigo) === String(parcela.bancoOrigem)); copiarTexto(b ? b.nome : parcela.bancoOrigem) }}>
                         <label>BANCO:</label>
                         <select value={parcela.bancoOrigem} disabled>
                           <option value="">Selecione</option>
@@ -1335,19 +1341,19 @@ export default function StatusProposta({ setPaginaAtual }) {
                           ))}
                         </select>
                       </div>
-                      <div className="field-group" style={{flex: 1, minWidth: 0}}>
+                      <div className="field-group" style={{flex: 1, minWidth: 0, cursor: 'pointer'}} onClick={() => copiarTexto(parcela.numeroContratoOrigem)}>
                         <label>Nº CONTRATO:</label>
                         <input type="text" placeholder="Nº contrato" value={parcela.numeroContratoOrigem} disabled />
                       </div>
-                      <div className="field-group" style={{flex: 1, minWidth: 0}}>
+                      <div className="field-group" style={{flex: 1, minWidth: 0, cursor: 'pointer'}} onClick={() => copiarTexto(parcela.saldoDevedor)}>
                         <label>SALDO DEVEDOR:</label>
                         <IMaskInput mask={Number} value={parcela.saldoDevedor} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
                       </div>
-                      <div className="field-group" style={{flex: 1, minWidth: 0}}>
+                      <div className="field-group" style={{flex: 1, minWidth: 0, cursor: 'pointer'}} onClick={() => copiarTexto(parcela.valor)}>
                         <label>VALOR DE PARCELA:</label>
                         <IMaskInput mask={Number} value={parcela.valor} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
                       </div>
-                      <div className="field-group" style={{flex: 1, minWidth: 0}}>
+                      <div className="field-group" style={{flex: 1, minWidth: 0, cursor: 'pointer'}} onClick={() => copiarTexto(parcela.numero)}>
                         <label>PARCELAS RESTANTES:</label>
                         <select value={parcela.numero} disabled>
                           <option value="">Selecione</option>
@@ -1362,30 +1368,19 @@ export default function StatusProposta({ setPaginaAtual }) {
                 <div style={{flex: 1}}>
                   <div className="subsection-title">OPERAÇÃO</div>
                   <div className="grid-row">
-                    <div className="field-group">
+                    <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(valorLiberado)}>
                       <label>VALOR LIBERADO:</label>
                       <IMaskInput mask={Number} value={valorLiberado} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
                     </div>
-                    <div className="field-group">
+                    <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(prazo)}>
                       <label>PRAZO:</label>
-                      <select value={prazo} disabled>
-                        <option value="">Selecione</option>
-                        {prazo && ![120, 108, 96, 84, 72, 60].includes(Number(prazo)) && (
-                          <option value={prazo}>{prazo}</option>
-                        )}
-                        <option value="120">120</option>
-                        <option value="108">108</option>
-                        <option value="96">96</option>
-                        <option value="84">84</option>
-                        <option value="72">72</option>
-                        <option value="60">60</option>
-                      </select>
+                      <input type="text" value={prazo} disabled />
                     </div>
-                    <div className="field-group">
+                    <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(tps)}>
                       <label>TPS:</label>
                       <IMaskInput mask={Number} value={tps} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled />
                     </div>
-                    <div className="field-group">
+                    <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(seguro)}>
                       <label>SEGURO:</label>
                       <select value={seguro} disabled>
                         <option value="">Selecione</option>
@@ -1402,7 +1397,7 @@ export default function StatusProposta({ setPaginaAtual }) {
           <section className="secao-container">
             <header className="secao-header">Dados Bancários</header>
             <div className="grid-row">
-              <div className="field-group">
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => { const b = bancosRecebimentoDisponiveis.find(x => String(x.id) === String(dadosBancarios.banco)); copiarTexto(b ? b.nome : dadosBancarios.banco) }}>
                 <label>BANCO:</label>
                 <div className="input-with-button">
                   <select value={dadosBancarios.banco} disabled>
@@ -1414,19 +1409,19 @@ export default function StatusProposta({ setPaginaAtual }) {
                   <button className="btn-modal" disabled>...</button>
                 </div>
               </div>
-              <div className="field-group">
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(dadosBancarios.agencia)}>
                 <label>AGÊNCIA:</label>
                 <IMaskInput mask="0000" value={dadosBancarios.agencia} placeholder="0000" className="imask-input" disabled />
               </div>
-              <div className="field-group">
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(dadosBancarios.numeroConta)}>
                 <label>NÚMERO DA CONTA:</label>
                 <input type="text" placeholder="00000" value={dadosBancarios.numeroConta} disabled />
               </div>
-              <div className="field-group xsmall">
+              <div className="field-group xsmall" style={{cursor: 'pointer'}} onClick={() => copiarTexto(dadosBancarios.digitoVerificador)}>
                 <label>DV:</label>
                 <IMaskInput mask="0" value={dadosBancarios.digitoVerificador} placeholder="0" className="imask-input" disabled />
               </div>
-              <div className="field-group">
+              <div className="field-group" style={{cursor: 'pointer'}} onClick={() => copiarTexto(dadosBancarios.tipoConta)}>
                 <label>TIPO DE CONTA:</label>
                 <select value={dadosBancarios.tipoConta} disabled>
                   <option value="">Selecione</option>
@@ -1576,7 +1571,7 @@ export default function StatusProposta({ setPaginaAtual }) {
               </div>
               <div className="campo-lateral">
                 <label>VALOR REAL DA PARCELA:</label>
-                <IMaskInput mask={Number} value={parcelaReal} onAccept={(v) => setParcelaReal(v)} className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled={isReprovado} />
+                <IMaskInput mask={Number} value={parcelaReal} onAccept={(v) => setParcelaReal(v)} className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." prepare={(str) => str.replace(/\./g, '')} disabled={isReprovado} />
               </div>
               <div className="campo-lateral">
                 <label>PRAZO REAL:</label>
@@ -1584,11 +1579,11 @@ export default function StatusProposta({ setPaginaAtual }) {
               </div>
               <div className="campo-lateral">
                 <label>VALOR REAL LIBERADO:</label>
-                <IMaskInput mask={Number} value={valorRealLiberado} onAccept={(v) => setValorRealLiberado(v)} className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled={isReprovado} />
+                <IMaskInput mask={Number} value={valorRealLiberado} onAccept={(v) => setValorRealLiberado(v)} className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." prepare={(str) => str.replace(/\./g, '')} disabled={isReprovado} />
               </div>
               <div className="campo-lateral">
                 <label>TPS CORRIGIDA:</label>
-                <IMaskInput mask={Number} value={tpsCorrigida} onAccept={(v) => setTpsCorrigida(v)} className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." disabled={isReprovado} />
+                <IMaskInput mask={Number} value={tpsCorrigida} onAccept={(v) => setTpsCorrigida(v)} className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." prepare={(str) => str.replace(/\./g, '')} disabled={isReprovado} />
               </div>
               <div className="campo-lateral">
                 <label>STATUS PROPOSTA:</label>
@@ -1663,7 +1658,7 @@ export default function StatusProposta({ setPaginaAtual }) {
           <div className="success-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="success-modal-icon">✓</div>
             <h3>Proposta recadastrada com sucesso!</h3>
-            <p>A nova proposta foi criada e a original cancelada.</p>
+            <p>A nova proposta foi criada e a original reprovada.</p>
             <button className="success-modal-btn" onClick={() => { setModalRedigirSucesso(false); setPaginaAtual('esteira-proposta') }}>OK</button>
           </div>
         </div>

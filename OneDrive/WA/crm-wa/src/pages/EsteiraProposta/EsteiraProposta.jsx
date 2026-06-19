@@ -35,9 +35,16 @@ export default function EsteiraProposta({ setPaginaAtual }) {
   const [docAnexos, setDocAnexos] = useState({})
   const [docLoading, setDocLoading] = useState(false)
   const [docUploadModal, setDocUploadModal] = useState({ open: false, tipo: null, label: '', propostaId: null })
+  const [toastVisivel, setToastVisivel] = useState(false)
 
   useEffect(() => {
     carregarPropostas(pagina)
+    const propostaId = localStorage.getItem('notif_modal_proposta_id')
+    if (propostaId) {
+      localStorage.removeItem('notif_modal_proposta_id')
+      setModalDetalheId(parseInt(propostaId))
+      setModalDetalheOpen(true)
+    }
   }, [pagina, abaAtiva])
 
   useEffect(() => {
@@ -170,10 +177,10 @@ export default function EsteiraProposta({ setPaginaAtual }) {
           banco_credor:banco_credor_id (nome),
           tipo_operacao:tipo_operacao_id (nome)
         `, { count: 'exact' })
-        .eq('proposta_status_id', parseInt(abaAtiva))
-        .order('atualizado_em', { ascending: true })
+        .order('criado_em', { ascending: true })
 
       if (!temFiltro) {
+        query = query.eq('proposta_status_id', parseInt(abaAtiva))
         const start = (page - 1) * ITENS_POR_PAGINA
         const end = start + ITENS_POR_PAGINA - 1
         query = query.range(start, end)
@@ -193,6 +200,13 @@ export default function EsteiraProposta({ setPaginaAtual }) {
       if (!data || data.length === 0) {
         setPropostas([])
         setTotalPaginas(1)
+        if (temFiltro) {
+          const novasContagens = {}
+          for (const s of listaStatus) {
+            novasContagens[s.id] = 0
+          }
+          setContagensStatus(novasContagens)
+        }
         setLoading(false)
         return
       }
@@ -310,6 +324,12 @@ export default function EsteiraProposta({ setPaginaAtual }) {
       }
 
       if (temFiltro) {
+        const novasContagens = {}
+        for (const s of listaStatus) {
+          novasContagens[s.id] = propostasFormatadas.filter(p => String(p.proposta_status_id) === String(s.id)).length
+        }
+        setContagensStatus(novasContagens)
+        propostasFormatadas = propostasFormatadas.filter(p => String(p.proposta_status_id) === String(abaAtiva))
         const totalFiltered = propostasFormatadas.length
         const startSlice = (page - 1) * ITENS_POR_PAGINA
         const endSlice = startSlice + ITENS_POR_PAGINA
@@ -323,6 +343,14 @@ export default function EsteiraProposta({ setPaginaAtual }) {
       console.error('Erro ao carregar propostas:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  function copiarTexto(texto) {
+    if (texto && String(texto).trim() !== '') {
+      navigator.clipboard.writeText(String(texto))
+      setToastVisivel(true)
+      setTimeout(() => setToastVisivel(false), 2000)
     }
   }
 
@@ -484,7 +512,13 @@ export default function EsteiraProposta({ setPaginaAtual }) {
   }
 
   return (
-    <div className="form-container">
+    <>
+      {toastVisivel && (
+        <div className="toast-notification">
+          Os dados foram copiados
+        </div>
+      )}
+      <div className="form-container">
       <header className="form-header">
           <h1>Esteira de Proposta</h1>
           <p className="header-subtitle">Descrição da página</p>
@@ -562,9 +596,9 @@ export default function EsteiraProposta({ setPaginaAtual }) {
                       {item.adeWa}
                     </span>
                   </td>
-                  <td>{item.propostaBanco}</td>
+                  <td style={{cursor: 'pointer'}} onClick={() => copiarTexto(item.propostaBanco)}>{item.propostaBanco}</td>
                   <td>{item.nomeCliente.toUpperCase()}</td>
-                  <td>{item.cpf ? `${item.cpf.slice(0, 3)}.${item.cpf.slice(3, 6)}.${item.cpf.slice(6, 9)}-${item.cpf.slice(9, 11)}` : 'N/A'}</td>
+                  <td style={{cursor: 'pointer'}} onClick={() => copiarTexto(item.cpf ? `${item.cpf.slice(0, 3)}.${item.cpf.slice(3, 6)}.${item.cpf.slice(6, 9)}-${item.cpf.slice(9, 11)}` : 'N/A')}>{item.cpf ? `${item.cpf.slice(0, 3)}.${item.cpf.slice(3, 6)}.${item.cpf.slice(6, 9)}-${item.cpf.slice(9, 11)}` : 'N/A'}</td>
                   <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#3f3b6c', fontSize: '14px', cursor: 'pointer' }} onClick={() => { setModalDetalheId(item.id); setModalDetalheOpen(true) }}>
                     {item.statusHistorico}
                   </td>
@@ -701,5 +735,6 @@ export default function EsteiraProposta({ setPaginaAtual }) {
         onAnexar={(tipo, atualizados) => handleDocUploadComplete(tipo, atualizados)}
       />
     </div>
+    </>
   )
 }

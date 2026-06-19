@@ -1,2 +1,16 @@
-Link do protótipo 
-https://www.figma.com/site/VGYdbO9QSP1YOCokimCyII/CRM-WA?node-id=0-1&t=F5730tSgeyfJGb3L-1
+Área: Análise de Dados / BI (Business Intelligence)
+
+1) Lógica de dados: Tabelas, linhas e colunas, relacionamentos, métricas e KPIs
+Objetivo: entender como os dados “se organizam”.
+
+2) Excel avançado PROCV/XLOOKUP,Tabela dinâmica ,gráficos ,fórmulas e limpeza de dados
+Objetivo: Muita gente subestima Excel, mas ele ainda é muito usado.
+
+3) SQL: buscar dados, ,filtrar ,juntar tabelas e criar consultas.
+Quando SQL “clicar”, muita coisa começa a fazer sentido.
+
+4) Power BI: montar portfólio, mostrar resultados e conseguir entrevistas.
+Ferramenta para criar dashboards e análises visuais.
+
+5) Noções básicas de Python: variáveis, listas, manipulação de dados e biblioteca pandas
+Python vira um diferencial depois que você já entende dados.

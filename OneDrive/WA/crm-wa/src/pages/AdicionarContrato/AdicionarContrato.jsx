@@ -55,11 +55,11 @@ export default function AdicionarContrato({ setPaginaAtual }) {
   const [siapeServidorId, setSiapeServidorId] = useState(null)
   const [siapePensionistaId, setSiapePensionistaId] = useState(null)
   
-  const [parcelas, setParcelas] = useState([{ id: 1, valor: "", numero: "", bancoOrigem: "", numeroContratoOrigem: "", saldoDevedor: "", troco: "" }])
+  const [parcelas, setParcelas] = useState([{ id: 1, valor: "", numero: "", bancoOrigem: "", bancoOrigemNome: "", numeroContratoOrigem: "", saldoDevedor: "", troco: "" }])
 
   const adicionarParcela = () => {
     const newId = parcelas.length > 0 ? Math.max(...parcelas.map(p => p.id)) + 1 : 1
-    setParcelas([...parcelas, { id: newId, valor: "", numero: "", bancoOrigem: "", numeroContratoOrigem: "", saldoDevedor: "", troco: "" }])
+    setParcelas([...parcelas, { id: newId, valor: "", numero: "", bancoOrigem: "", bancoOrigemNome: "", numeroContratoOrigem: "", saldoDevedor: "", troco: "" }])
   }
   const removerParcela = (id) => {
     if (parcelas.length > 1) {
@@ -1027,7 +1027,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
     setBairro("")
     setCidade("")
     setEstado("")
-    setParcelas([{ id: 1, valor: "", numero: "", bancoOrigem: "", numeroContratoOrigem: "", saldoDevedor: "" }])
+    setParcelas([{ id: 1, valor: "", numero: "", bancoOrigem: "", bancoOrigemNome: "", numeroContratoOrigem: "", saldoDevedor: "" }])
     setTps("")
     setSeguro("")
     setValorLiberado("")
@@ -1294,8 +1294,9 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                   scale={2}
                   radix=","
                   prefix="R$ "
-                  thousandsSeparator="."
-                  style={{backgroundColor: "#d5d5d5"}}
+  thousandsSeparator="."
+  prepare={(str) => str.replace(/\./g, '')}
+  style={{backgroundColor: "#d5d5d5"}}
                   readOnly
                 />
               </div>
@@ -1566,10 +1567,11 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                               scale={2}
                               radix=","
                               prefix="R$ "
-                              thousandsSeparator="."
-                              disabled={!secoesAposClienteDesbloqueadas}
-                              unmask={true}
-                             required/>
+  thousandsSeparator="."
+  prepare={(str) => str.replace(/\./g, '')}
+  disabled={!secoesAposClienteDesbloqueadas}
+  unmask={true}
+ required/>
                 </div>
                 <div className="field-group">
                   <label>TAXA DE JUROS:</label>
@@ -1582,22 +1584,23 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                     scale={2}
                     radix=","
                     suffix="%"
-                    thousandsSeparator="."
-                    disabled={!secoesAposClienteDesbloqueadas}
-                    unmask={true}
-                   required/>
+  thousandsSeparator="."
+  prepare={(str) => str.replace(/\./g, '')}
+  disabled={!secoesAposClienteDesbloqueadas}
+  unmask={true}
+ required/>
                 </div>
                 <div className="field-group">
                   <label>PRAZO:</label>
-                  <select value={prazo} onChange={(e) => setPrazo(e.target.value)} disabled={!secoesAposClienteDesbloqueadas} className={formSubmitted && !prazo ? 'input-error' : ''} required>
-                    <option value="">Selecione</option>
-                    <option value="120">120</option>
-                    <option value="108">108</option>
-                    <option value="96">96</option>
-                    <option value="84">84</option>
-                    <option value="72">72</option>
-                    <option value="60">60</option>
-                  </select>
+                  <input
+                    type="text"
+                    placeholder="Meses"
+                    value={prazo}
+                    onChange={(e) => setPrazo(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                    disabled={!secoesAposClienteDesbloqueadas}
+                    className={formSubmitted && !prazo ? 'input-error' : ''}
+                    style={{ color: '#333' }}
+                   required/>
                 </div>
               </div>
               <div className="grid-row">
@@ -1753,17 +1756,16 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                           </div>
 
                           <div className="field-group">
-                             <label>PRAZO:</label>
-                           <select value={prazo} onChange={(e) => setPrazo(e.target.value)} disabled={!secoesAposClienteDesbloqueadas} className={formSubmitted && !prazo ? 'input-error' : ''} required>
-                             <option value="">Selecione</option>
-                             <option value="120">120</option>
-                             <option value="108">108</option>
-                             <option value="96">96</option>
-                             <option value="84">84</option>
-                             <option value="72">72</option>
-                             <option value="60">60</option>
-                           </select>
-                        </div>
+                           <label>PRAZO:</label>
+                            <input
+                              type="text"
+                              placeholder="Meses"
+                              value={prazo}
+                              onChange={(e) => setPrazo(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                              disabled={!secoesAposClienteDesbloqueadas}
+                              className={formSubmitted && !prazo ? 'input-error' : ''}
+                             required/>
+                         </div>
 
                         <div className="field-group">
                           <label>TPS:</label>
@@ -1803,10 +1805,11 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                               scale={2}
                               radix=","
                               prefix="R$ "
-                              thousandsSeparator="."
-                              disabled={!secoesAposClienteDesbloqueadas}
-                              unmask={true}
-                             required/>
+  thousandsSeparator="."
+  prepare={(str) => str.replace(/\./g, '')}
+  disabled={!secoesAposClienteDesbloqueadas}
+  unmask={true}
+ required/>
                          </div>
                        )}
 
@@ -1821,10 +1824,11 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                                scale={2}
                                radix=","
                                prefix="R$ "
-                               thousandsSeparator="."
-                               disabled={!secoesAposClienteDesbloqueadas}
-                               unmask={true}
-                             />
+  thousandsSeparator="."
+  prepare={(str) => str.replace(/\./g, '')}
+  disabled={!secoesAposClienteDesbloqueadas}
+  unmask={true}
+/>
                            </div>
                         </div>
                       </div>
@@ -1841,15 +1845,40 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                   <div className="subsection-title" style={{marginBottom: '15px'}}>Parcelas</div>
                   {parcelas.map((parcela, index) => (
                     <div key={parcela.id} style={{display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'nowrap', marginBottom: '10px'}}>
-                      <div className="field-group" style={{flex: 1, minWidth: 0}}>
-                        <label>BANCO:</label>
-                        <select value={parcela.bancoOrigem} onChange={(e) => { const n = [...parcelas]; n[index].bancoOrigem = e.target.value; setParcelas(n) }} disabled={!secoesAposClienteDesbloqueadas} required>
-                          <option value="">Selecione</option>
-                          {bancosRecebimentoDisponiveis.map((item) => (
-                            <option key={item.codigo} value={item.codigo}>{item.nome}</option>
-                          ))}
-                        </select>
-                      </div>
+                       <div className="field-group" style={{flex: 1, minWidth: 0}}>
+                         <label>CÓDIGO DO BANCO:</label>
+                         <input
+                           type="text"
+                           placeholder="Código"
+                           value={parcela.bancoOrigem}
+                           onChange={async (e) => {
+                             const n = [...parcelas];
+                             const raw = e.target.value.replace(/\D/g, '').slice(0, 3);
+                             n[index].bancoOrigem = raw;
+                             const codigo = raw.padStart(3, '0');
+                             if (codigo.length >= 3) {
+                               try {
+                                 const res = await fetch(`https://brasilapi.com.br/api/banks/v1/${codigo}`);
+                                 if (res.ok) {
+                                   const data = await res.json();
+                                   n[index].bancoOrigemNome = data.name || '';
+                                 }
+                               } catch (_) {}
+                             }
+                             setParcelas(n)
+                           }}
+                           disabled={!secoesAposClienteDesbloqueadas}
+                          required/>
+                       </div>
+                       <div className="field-group" style={{flex: 1, minWidth: 0}}>
+                         <label>NOME DO BANCO:</label>
+                         <input
+                           type="text"
+                           placeholder="Nome do banco"
+                           value={parcela.bancoOrigemNome}
+                           disabled
+                          required/>
+                       </div>
                       <div className="field-group" style={{flex: 1, minWidth: 0}}>
                         <label>Nº CONTRATO:</label>
                         <input
@@ -1871,10 +1900,11 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                               scale={2}
                               radix=","
                               prefix="R$ "
-                              thousandsSeparator="."
-                              disabled={!secoesAposClienteDesbloqueadas}
-                              unmask={true}
-                             required/>
+  thousandsSeparator="."
+  prepare={(str) => str.replace(/\./g, '')}
+  disabled={!secoesAposClienteDesbloqueadas}
+  unmask={true}
+ required/>
                        </div>
                       <div className="field-group" style={{flex: 1, minWidth: 0}}>
                         <label>VALOR DE PARCELA:</label>
@@ -1892,23 +1922,20 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                            unmask={true}
                           required/>
                       </div>
-                      <div className="field-group" style={{flex: 1, minWidth: 0}}>
-                        <label>PARCELAS RESTANTES:</label>
-                        <select 
-                          value={parcela.numero} 
-                          onChange={(e) => { const n = [...parcelas]; n[index].numero = e.target.value; setParcelas(n) }} 
-                          disabled={!secoesAposClienteDesbloqueadas}
-                         required>
-                          <option value="">Selecione</option>
-                          {Array.from({ length: 96 }, (_, i) => i + 1).map(num => (
-                            <option key={num} value={num + "x"}>{num}x</option>
-                          ))}
-                        </select>
-                      </div>
-                      {parcelas.length > 1 && (
-                        <button 
-                          type="button" 
-                          onClick={() => removerParcela(parcela.id)}
+                       <div className="field-group" style={{flex: 1, minWidth: 0}}>
+                         <label>PARCELAS RESTANTES:</label>
+                         <input
+                           type="text"
+                           placeholder="Digite a quantidade"
+                           value={parcela.numero}
+                           onChange={(e) => { const n = [...parcelas]; n[index].numero = e.target.value.replace(/\D/g, ''); setParcelas(n) }}
+                           disabled={!secoesAposClienteDesbloqueadas}
+                          required/>
+                       </div>
+                       {parcelas.length > 1 && (
+                         <button 
+                           type="button" 
+                           onClick={() => removerParcela(parcela.id)}
                           style={{
                             padding: '5px 10px',
                             backgroundColor: '#d9534f',
@@ -2001,17 +2028,16 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                          </div>
 
                          <div className="field-group">
-                            <label>PRAZO:</label>
-                          <select value={prazo} onChange={(e) => setPrazo(e.target.value)} disabled={!secoesAposClienteDesbloqueadas} className={formSubmitted && !prazo ? 'input-error' : ''} required>
-                            <option value="">Selecione</option>
-                            <option value="120">120</option>
-                            <option value="108">108</option>
-                            <option value="96">96</option>
-                            <option value="84">84</option>
-                            <option value="72">72</option>
-                            <option value="60">60</option>
-                          </select>
-                        </div>
+                          <label>PRAZO:</label>
+                           <input
+                             type="text"
+                             placeholder="Meses"
+                             value={prazo}
+                             onChange={(e) => setPrazo(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                             disabled={!secoesAposClienteDesbloqueadas}
+                             className={formSubmitted && !prazo ? 'input-error' : ''}
+                            required/>
+                         </div>
 
                         <div className="field-group">
                           <label>TPS:</label>
@@ -2051,10 +2077,11 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                               scale={2}
                               radix=","
                               prefix="R$ "
-                              thousandsSeparator="."
-                              disabled={!secoesAposClienteDesbloqueadas}
-                              unmask={true}
-                             required/>
+  thousandsSeparator="."
+  prepare={(str) => str.replace(/\./g, '')}
+  disabled={!secoesAposClienteDesbloqueadas}
+  unmask={true}
+ required/>
                           </div>
                         )}
 
@@ -2260,11 +2287,11 @@ export default function AdicionarContrato({ setPaginaAtual }) {
               <div className="modal-body" style={{ padding: '20px' }}>
                 <div className="field-group" style={{ marginBottom: 15 }}>
                   <label>VALOR DE PARCELA:</label>
-                  <IMaskInput mask={Number} value={addRefinValor} onAccept={(v) => setAddRefinValor(v)} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." unmask={true} />
+                  <IMaskInput mask={Number} value={addRefinValor} onAccept={(v) => setAddRefinValor(v)} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ "   thousandsSeparator="." prepare={(str) => str.replace(/\./g, '')} unmask={true} />
                 </div>
                 <div className="field-group" style={{ marginBottom: 15 }}>
                   <label>VALOR LIBERADO:</label>
-                  <IMaskInput mask={Number} value={addRefinLiberado} onAccept={(v) => setAddRefinLiberado(v)} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ " thousandsSeparator="." unmask={true} />
+                  <IMaskInput mask={Number} value={addRefinLiberado} onAccept={(v) => setAddRefinLiberado(v)} placeholder="R$ 0,00" className="imask-input" scale={2} radix="," prefix="R$ "   thousandsSeparator="." prepare={(str) => str.replace(/\./g, '')} unmask={true} />
                 </div>
                 <div className="field-group" style={{ marginBottom: 15 }}>
                   <label>PRAZO:</label>
@@ -2272,7 +2299,7 @@ export default function AdicionarContrato({ setPaginaAtual }) {
                 </div>
                 <div className="field-group" style={{ marginBottom: 15 }}>
                   <label>TPS:</label>
-                  <IMaskInput mask={Number} value={addRefinTps} onAccept={(v) => setAddRefinTps(v)} placeholder="0,00" className="imask-input" scale={2} radix="," thousandsSeparator="." />
+                  <IMaskInput mask={Number} value={addRefinTps} onAccept={(v) => setAddRefinTps(v)} placeholder="0,00" className="imask-input" scale={2} radix="," thousandsSeparator="." prepare={(str) => str.replace(/\./g, '')} />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
                   <button className="btn-cancelar" onClick={() => { setModalAddRefin(false); setPaginaAtual('anexar-documento') }}>Fechar</button>

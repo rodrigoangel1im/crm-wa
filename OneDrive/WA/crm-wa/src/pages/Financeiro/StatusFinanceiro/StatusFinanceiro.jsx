@@ -112,6 +112,7 @@ export default function StatusFinanceiro({ setPaginaAtual }) {
                 radix=","
                 prefix="R$ "
                 thousandsSeparator="."
+                prepare={(str) => str.replace(/\./g, '')}
               />
             </div>
             <div className="field-group">
@@ -126,6 +127,7 @@ export default function StatusFinanceiro({ setPaginaAtual }) {
                 radix=","
                 prefix="R$ "
                 thousandsSeparator="."
+                prepare={(str) => str.replace(/\./g, '')}
               />
             </div>
             <div className="field-group">

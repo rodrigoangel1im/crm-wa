@@ -345,3 +345,7 @@
   border-color: #dc2626 !important;
   border-width: 2px !important;
 }
+
+.field-group input::placeholder {
+  color: #999 !important;
+}
