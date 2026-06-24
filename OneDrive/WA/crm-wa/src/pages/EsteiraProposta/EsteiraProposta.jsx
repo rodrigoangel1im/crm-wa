@@ -56,6 +56,7 @@ export default function EsteiraProposta({ setPaginaAtual }) {
     'aguarda digitacao',
     'em analise',
     'aguarda assinatura',
+    'aguarda desbloqueio',
     'aguarda cip',
     'aguarda refin',
     'pendente',
