@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { canAccess } from '../../lib/permissoes'
-import { Home, FileText, Calculator, ClipboardList, User, LogOut, Settings, DollarSign, Book, Sparkles } from 'lucide-react'
+import { Home, FileText, Calculator, ClipboardList, User, LogOut, Settings, DollarSign, Sparkles, Receipt } from 'lucide-react'
 import './Sidebar.css'
 
 export default function Sidebar({ paginaAtual, setPaginaAtual, collapsed, onToggleCollapse }) {
@@ -122,16 +122,6 @@ export default function Sidebar({ paginaAtual, setPaginaAtual, collapsed, onTogg
             <span className="nav-text">Financeiro</span>
           </a>
         )}
-        {canAccess('base-conhecimento') && (
-          <a
-            href="#"
-            className={paginaAtual === 'base-conhecimento' ? 'active' : ''}
-            onClick={(e) => { e.preventDefault(); setPaginaAtual('base-conhecimento') }}
-          >
-            <Book size={20} className="icon" />
-            <span className="nav-text">Base de Conhecimento</span>
-          </a>
-        )}
         {canAccess('higienizacao') && (
           <a
             href="#"
@@ -140,6 +130,16 @@ export default function Sidebar({ paginaAtual, setPaginaAtual, collapsed, onTogg
           >
             <Sparkles size={20} className="icon" />
             <span className="nav-text">Higienização</span>
+          </a>
+        )}
+        {canAccess('comprovantes') && (
+          <a
+            href="#"
+            className={paginaAtual === 'comprovantes' ? 'active' : ''}
+            onClick={(e) => { e.preventDefault(); setPaginaAtual('comprovantes') }}
+          >
+            <Receipt size={20} className="icon" />
+            <span className="nav-text">Comprovantes</span>
           </a>
         )}
         {canAccess('configuracoes') && (

@@ -18,9 +18,9 @@ import Perfil from './pages/Perfil/Perfil'
 import ConfiguracoesSistema from './pages/ConfiguracoesSistema/ConfiguracoesSistema'
 import AnexarDocumento from './pages/AnexarDocumento/AnexarDocumento'
 import Financeiro from './pages/Financeiro/Financeiro'
-import BaseConhecimento from './pages/BaseConhecimento/BaseConhecimento'
 import StatusFinanceiro from './pages/Financeiro/StatusFinanceiro/StatusFinanceiro'
 import Higienizacao from './pages/Higienizacao/Higienizacao'
+import Comprovantes from './pages/Comprovantes/Comprovantes'
 import Sidebar from './components/Sidebar/Sidebar'
 import LoadingBars from './components/LoadingBars/LoadingBars'
 import NotificationBell from './components/NotificationBell/NotificationBell'
@@ -99,8 +99,8 @@ export default function App() {
           {paginaAtual === 'configuracoes-sistema' && <ConfiguracoesSistema />}
           {paginaAtual === 'financeiro' && <Financeiro setPaginaAtual={setPaginaAtual} />}
           {paginaAtual === 'status-financeiro' && <StatusFinanceiro setPaginaAtual={setPaginaAtual} />}
-          {paginaAtual === 'base-conhecimento' && <BaseConhecimento />}
           {paginaAtual === 'higienizacao' && <Higienizacao />}
+          {paginaAtual === 'comprovantes' && <Comprovantes />}
         </main>
       </div>
       <NotificationBell setPaginaAtual={setPaginaAtual} />
